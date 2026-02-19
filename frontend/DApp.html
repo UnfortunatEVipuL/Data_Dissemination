@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>DApp | File Access</title>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+
+  <style>
+    /* --- iOS 26 SPATIAL THEME --- */
+    :root {
+        --glass-bg: rgba(28, 28, 30, 0.65);
+        --glass-border: rgba(255, 255, 255, 0.12);
+        --primary: #0A84FF;
+        --success: #32D74B;
+        --danger: #FF453A;
+        --text-primary: #FFFFFF;
+        --text-secondary: rgba(235, 235, 245, 0.6);
+    }
+
+    * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+
+    body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+        background: #000;
+        color: var(--text-primary);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        overflow: hidden;
+    }
+
+    /* WALLPAPER */
+    .wallpaper {
+        position: absolute; width: 150vw; height: 150vh;
+        background: radial-gradient(circle at 50% 50%, #1c0f33 0%, #000000 60%);
+        z-index: 0;
+    }
+    .orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.6; animation: float 20s infinite; }
+    .orb-1 { top: 20%; left: 20%; width: 400px; height: 400px; background: #0A84FF; }
+    .orb-2 { bottom: 10%; right: 10%; width: 500px; height: 500px; background: #5E5CE6; animation-delay: -5s; }
+    @keyframes float { 0%,100%{transform:translate(0,0)} 33%{transform:translate(30px,-50px)} 66%{transform:translate(-20px,20px)} }
+
+    /* APP CONTAINER */
+    .app-container {
+        position: relative; z-index: 10;
+        width: 100%; max-width: 460px;
+        background: var(--glass-bg);
+        backdrop-filter: blur(50px) saturate(180%);
+        -webkit-backdrop-filter: blur(50px) saturate(180%);
+        border: 1px solid var(--glass-border);
+        border-radius: 44px;
+        padding: 40px 32px;
+        box-shadow: 0 40px 80px rgba(0,0,0,0.5);
+        display: flex; flex-direction: column; gap: 20px;
+        max-height: 90vh;
+        overflow-y: auto; 
+    }
+
+    /* HEADER */
+    .header-row { text-align: center; position: relative; margin-bottom: 10px; }
+    h2 { font-size: 32px; font-weight: 700; margin: 0 0 8px 0; }
+    .subtitle { font-size: 15px; color: var(--text-secondary); margin-top: 0; }
+
+    .settings-btn {
+        position: absolute; top: -10px; right: -10px;
+        background: rgba(255,255,255,0.1); border-radius: 50%;
+        width: 36px; height: 36px; border: none; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 18px; transition: 0.2s;
+    }
+    .settings-btn:hover { background: rgba(255,255,255,0.2); transform: rotate(45deg); }
+
+    /* OVERLAYS */
+    .overlay {
+        position: absolute; inset: 0; border-radius: 44px;
+        background: rgba(0,0,0,0.95); backdrop-filter: blur(20px);
+        z-index: 50; display: none; flex-direction: column; 
+        padding: 30px; text-align: center; overflow-y: auto;
+    }
+
+    .file-list {
+        text-align: left; margin-top: 20px; width: 100%;
+        display: flex; flex-direction: column; gap: 8px;
+    }
+    .file-item {
+        background: rgba(255,255,255,0.08); padding: 12px 16px;
+        border-radius: 12px; font-size: 14px; 
+        display: flex; justify-content: space-between; align-items: center;
+        transition: 0.2s;
+    }
+    .file-item:hover { background: rgba(255,255,255,0.15); }
+    .file-icon { font-size: 18px; margin-right: 10px; }
+    
+    /* NEW: Action Buttons inside File List */
+    .action-group { display: flex; gap: 8px; }
+    .btn-sm {
+        padding: 6px 12px; border-radius: 8px; font-size: 12px; border: none; cursor: pointer;
+        background: rgba(255,255,255,0.1); color: var(--text-primary); transition: 0.2s; margin-top:0; width: auto;
+    }
+    .btn-sm:hover { background: var(--primary); color: white; }
+    .btn-sm.download:hover { background: var(--success); }
+
+    /* INPUTS & BUTTONS */
+    input {
+        width: 100%; background: rgba(120, 120, 128, 0.16);
+        border: none; border-radius: 16px; padding: 16px;
+        color: white; font-size: 17px; outline: none; transition: 0.2s;
+    }
+    input:focus { background: rgba(120, 120, 128, 0.3); box-shadow: 0 0 0 2px var(--primary); }
+
+    button {
+        width: 100%; padding: 16px; border-radius: 40px; border: none;
+        font-size: 17px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: 8px;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-glass { background: rgba(255,255,255,0.1); color: var(--primary); backdrop-filter: blur(10px); }
+    .btn-glass:hover { background: rgba(255,255,255,0.15); }
+    .btn-cancel { background: transparent; color: var(--text-secondary); }
+    .btn-danger { background: rgba(255, 69, 58, 0.2); color: var(--danger); border: 1px solid rgba(255, 69, 58, 0.3); }
+    .btn-danger:hover { background: rgba(255, 69, 58, 0.3); }
+
+    /* LOGS */
+    .log-card {
+        background: rgba(0,0,0,0.3); border-radius: 20px; padding: 15px;
+        height: 300px; overflow-y: auto; border: 1px solid var(--glass-border);
+    }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th { text-align: left; font-size: 11px; text-transform: uppercase; color: var(--text-secondary); padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    td { padding: 12px 0; font-size: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: top;}
+    .time-col { color: var(--text-secondary); font-size: 10px; text-align: right; width: 60px; }
+    .user-col { font-family: 'Menlo', monospace; color: var(--primary); word-break: break-all; line-height: 1.4; padding-right: 10px; }
+
+    /* STATUS PILL */
+    #statusPill {
+        background: #000; border-radius: 50px; padding: 8px 20px;
+        display: flex; align-items: center; justify-content: center; gap: 8px;
+        width: fit-content; margin: 0 auto 10px auto;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #333; }
+    .dot.online { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    .dot.error { background: var(--danger); }
+    #statusText { font-size: 13px; font-weight: 500; }
+    #contractDisplay { font-size: 10px; color: var(--text-secondary); margin-top: 5px; text-align: center;}
+
+    #adminPanel, #userPanel { display: none; flex-direction: column; gap: 15px; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+  </style>
+</head>
+<body>
+
+<div class="wallpaper">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+</div>
+
+<div class="app-container">
+    
+    <div id="settingsOverlay" class="overlay">
+        <h3>Configuration</h3>
+        <p style="color:var(--text-secondary); font-size:14px; margin-bottom:20px;">
+            Update the deployed Smart Contract address below.
+        </p>
+        <input id="configAddress" type="text" placeholder="0x..." style="margin-bottom:10px;">
+        <button onclick="saveConfig()" class="btn-primary">Save Address</button>
+        <button onclick="toggleOverlay('settingsOverlay')" class="btn-cancel">Cancel</button>
+    </div>
+
+    <div id="zipOverlay" class="overlay">
+        <h3>Archive Viewer</h3>
+        <div id="zipFileList" class="file-list"></div>
+        <button onclick="toggleOverlay('zipOverlay')" class="btn-cancel" style="margin-top:20px;">Close Viewer</button>
+    </div>
+
+    <div class="header-row">
+        <button class="settings-btn" onclick="toggleOverlay('settingsOverlay')">⚙️</button>
+        <h2>DApp | File Access</h2>
+        <div class="subtitle">Secure Data Portal</div>
+    </div>
+
+    <div id="statusPill">
+        <div id="statusDot" class="dot"></div>
+        <span id="statusText">System Offline</span>
+    </div>
+    <div id="contractDisplay">Target: Not Set</div>
+
+    <div id="connectPanel">
+        <p style="text-align:center; color:var(--text-secondary); font-size:15px;">
+            Connect Wallet to view files or audit logs.
+        </p>
+        <button id="btnConnect" class="btn-primary">Connect Wallet</button>
+    </div>
+
+    <div id="adminPanel">
+        <input id="fileId" type="number" placeholder="File ID">
+        <input id="fileName" type="text" placeholder="File Name">
+        <input id="cid" type="text" placeholder="IPFS CID">
+        <button id="btnAdd" class="btn-glass">Upload Record</button>
+        
+        <div style="height:10px; border-bottom:1px solid rgba(255,255,255,0.1)"></div>
+
+        <input id="authFileId" type="number" placeholder="Authorize File ID">
+        <input id="userAddr" type="text" placeholder="User Address (0x...)">
+        <button id="btnAuth" class="btn-glass">Grant Access</button>
+
+        <details style="margin-top:10px; background:rgba(255,0,0,0.1); border-radius:12px; padding:10px;">
+            <summary style="font-size:12px; color:var(--danger); cursor:pointer; font-weight:700;">⚠️ Danger Zone: Transfer Ownership</summary>
+            <input id="newOwnerAddr" type="text" placeholder="New Owner Address (0x...)" style="margin-top:10px;">
+            <button onclick="transferOwnership()" class="btn-danger">Transfer Contract</button>
+        </details>
+
+        <div style="margin-top:10px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                <span style="font-size:12px; font-weight:700; color:var(--text-secondary)">LIVE ACCESS LOGS</span>
+                <span onclick="loadAuditLogs()" style="font-size:12px; color:var(--primary); cursor:pointer">↻ Refresh</span>
+            </div>
+            <div class="log-card">
+                <table id="auditTable">
+                    <thead><tr><th style="width:100px;">File</th><th>Who Accessed</th><th style="text-align:right">Time</th></tr></thead>
+                    <tbody><tr><td colspan="3" align="center" style="padding:20px; color:#666">Connecting to chain...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="userPanel">
+        <div style="text-align:center; padding: 20px 0;">
+            <div style="font-size:40px;">👁️</div>
+            <h3 style="margin:10px 0 0 0;">Secure View</h3>
+            <p style="color:var(--text-secondary); font-size:13px; margin:5px 0 0 0;">
+                All actions are logged on-chain.
+            </p>
+        </div>
+        
+        <input id="viewId" type="number" placeholder="Enter File ID" style="text-align:center; font-size:22px; font-weight:600;">
+        <button id="btnAccess" class="btn-primary">Verify & Open File</button>
+    </div>
+
+</div>
+
+<script>
+    /* ---------- CONFIG ---------- */
+    let CONTRACT_ADDRESS = localStorage.getItem("nexus_contract_address") || "";
+    const SEPOLIA_ID = "0xaa36a7"; 
+
+    /* ---------- UI HELPERS ---------- */
+    function initConfig() {
+        const display = document.getElementById("contractDisplay");
+        if(CONTRACT_ADDRESS && CONTRACT_ADDRESS.length === 42) {
+            display.innerText = "Target: " + CONTRACT_ADDRESS.substring(0,8) + "...";
+            document.getElementById("configAddress").value = CONTRACT_ADDRESS;
+        } else {
+            display.innerText = "Target: ⚠️ Missing";
+            toggleOverlay('settingsOverlay');
+        }
+    }
+
+    function toggleOverlay(id) {
+        const el = document.getElementById(id);
+        el.style.display = (el.style.display === "flex") ? "none" : "flex";
+    }
+
+    function saveConfig() {
+        const val = document.getElementById("configAddress").value.trim();
+        if(!val.startsWith("0x") || val.length !== 42) return alert("Invalid Address");
+        CONTRACT_ADDRESS = val;
+        localStorage.setItem("nexus_contract_address", CONTRACT_ADDRESS);
+        initConfig();
+        toggleOverlay('settingsOverlay');
+        setTimeout(() => location.reload(), 500);
+    }
+
+    function setStatus(msg, type) {
+        const dot = document.getElementById("statusDot");
+        const text = document.getElementById("statusText");
+        text.innerText = msg;
+        dot.className = "dot " + type;
+    }
+
+    /* ---------- BLOCKCHAIN ---------- */
+    let provider, signer, contract;
+    const abi = [
+      "function addFile(uint256,string,string)",
+      "function authorizeUser(uint256,address)",
+      "function accessFile(uint256) returns (string)", 
+      "function logSubFile(uint256,string)", 
+      "function transferOwnership(address)",
+      "function owner() view returns (address)",
+      "event FileAccessed(uint indexed fileId, string fileName, address indexed user, uint timestamp)",
+      "event SubFileAccessed(uint indexed fileId, string subFileName, address indexed user, uint timestamp)" 
+    ];
+
+    async function connectWallet() {
+        if(!CONTRACT_ADDRESS) return toggleOverlay('settingsOverlay');
+        if (!window.ethereum) return alert("MetaMask not detected");
+        const btn = document.getElementById("btnConnect");
+        btn.innerText = "Connecting...";
+        try {
+            await window.ethereum.request({ method: "eth_requestAccounts" });
+            const chainId = await window.ethereum.request({ method: "eth_chainId" });
+            if (chainId !== SEPOLIA_ID) {
+                try { await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: SEPOLIA_ID }] }); } 
+                catch (e) { btn.innerText = "Connect"; return setStatus("Wrong Network", "error"); }
+            }
+            provider = new ethers.providers.Web3Provider(window.ethereum);
+            signer = provider.getSigner();
+            contract = new ethers.Contract(CONTRACT_ADDRESS, abi, signer);
+            const addr = await signer.getAddress();
+            let ownerAddr;
+            try { ownerAddr = await contract.owner(); } catch (e) { 
+                alert("Error connecting. Check Contract Address.");
+                return setStatus("Contract Error", "error"); 
+            }
+            setStatus("Online", "online");
+            document.getElementById("connectPanel").style.display = "none";
+            if (addr.toLowerCase() === ownerAddr.toLowerCase()) {
+                document.getElementById("adminPanel").style.display = "flex";
+                loadAuditLogs();
+            } else {
+                document.getElementById("userPanel").style.display = "flex";
+            }
+        } catch (err) { console.error(err); btn.innerText = "Connect Wallet"; setStatus("Connection Failed", "error"); }
+    }
+
+    async function loadAuditLogs() {
+        if (!contract) return;
+        const tbody = document.querySelector("#auditTable tbody");
+        try {
+            const filterMain = contract.filters.FileAccessed();
+            const filterSub = contract.filters.SubFileAccessed();
+            const logsMain = await contract.queryFilter(filterMain);
+            const logsSub = await contract.queryFilter(filterSub);
+            const allLogs = [...logsMain, ...logsSub].sort((a, b) => { return b.args.timestamp - a.args.timestamp || b.blockNumber - a.blockNumber; });
+            tbody.innerHTML = "";
+            if (allLogs.length === 0) { tbody.innerHTML = "<tr><td colspan='3' align='center' style='color:#666; padding:20px;'>No access logs found.</td></tr>"; return; }
+            for (let ev of allLogs) {
+                const isSub = ev.event === "SubFileAccessed";
+                const { fileId, user, timestamp } = ev.args;
+                const name = isSub ? ev.args.subFileName : ev.args.fileName;
+                const date = new Date(timestamp * 1000);
+                const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                let displayName = isSub ? `<span style="color:var(--primary); margin-left:10px;">↳ ${name}</span>` : name;
+                const row = `<tr><td><div style="font-weight:600; color:white; font-size:13px;">${displayName}</div><div style="font-size:10px; opacity:0.6;">ID ${fileId}</div></td><td class="user-col">${user}</td><td class="time-col">${timeString}</td></tr>`;
+                tbody.insertAdjacentHTML('beforeend', row);
+            }
+        } catch (err) { console.error(err); }
+    }
+
+    async function addFile() {
+        try {
+            const id = document.getElementById("fileId").value;
+            const name = document.getElementById("fileName").value; 
+            const cid = document.getElementById("cid").value;
+            if(!id || !cid || !name) return setStatus("Missing Input", "error");
+            setStatus("Confirm Upload...", "online");
+            const tx = await contract.addFile(id, cid, name);
+            setStatus("Uploading...", "online");
+            await tx.wait();
+            setStatus("File Added", "online");
+        } catch(e) { setStatus("Failed", "error"); }
+    }
+
+    async function authorizeUser() {
+        try {
+            const id = document.getElementById("authFileId").value;
+            const addr = document.getElementById("userAddr").value;
+            if(!id || !addr) return setStatus("Missing Input", "error");
+            setStatus("Confirm Auth...", "online");
+            const tx = await contract.authorizeUser(id, addr);
+            setStatus("Authorizing...", "online");
+            await tx.wait();
+            setStatus("User Authorized", "online");
+        } catch(e) { setStatus("Failed", "error"); }
+    }
+
+    async function transferOwnership() {
+        const newOwner = document.getElementById("newOwnerAddr").value;
+        if(!newOwner || !newOwner.startsWith("0x")) return setStatus("Invalid Address", "error");
+        if(!confirm("⚠️ WARNING: You are about to lose control of this contract forever. Are you sure?")) return;
+        try {
+            setStatus("Confirm Transfer...", "online");
+            const tx = await contract.transferOwnership(newOwner);
+            setStatus("Transferring...", "online");
+            await tx.wait();
+            alert("Ownership transferred.");
+            location.reload();
+        } catch(e) { setStatus("Failed", "error"); }
+    }
+
+    function isTextFile(bytes) {
+        for (let i = 0; i < bytes.length && i < 50; i++) {
+            const b = bytes[i];
+            if (b !== 9 && b !== 10 && b !== 13 && (b < 32 || b > 126)) return false;
+        }
+        return true;
+    }
+
+    async function getMimeType(blob) {
+        const bytes = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
+        if (bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) return { type: 'application/pdf', ext: 'pdf', isZip: false };
+        if (bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) return { type: 'image/jpeg', ext: 'jpg', isZip: false };
+        if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) return { type: 'image/png', ext: 'png', isZip: false };
+        if (bytes[4] === 0x66 && bytes[5] === 0x74 && bytes[6] === 0x79 && bytes[7] === 0x70) return { type: 'video/mp4', ext: 'mp4', isZip: false };
+        if (bytes[0] === 0x50 && bytes[1] === 0x4B && bytes[2] === 0x03 && bytes[3] === 0x04) return { type: 'application/zip', ext: 'zip', isZip: true };
+        if (isTextFile(bytes)) return { type: 'text/plain', ext: 'txt', isZip: false };
+        return { type: 'application/octet-stream', ext: 'bin', isZip: false };
+    }
+
+    async function accessFile() {
+        const id = document.getElementById("viewId").value;
+        if(!id) return setStatus("Enter ID", "error");
+        const newTab = window.open("", "_blank");
+        if (newTab) { newTab.document.write(`<style>body{background:#000;color:#fff;font-family:-apple-system,sans-serif;display:flex;flex-direction:column;justify-content:center;align-items:center;height:100vh;margin:0;}.loader{border:4px solid #333;border-top:4px solid #0A84FF;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin-bottom:20px;}@keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}</style><div class="loader"></div><h3>Securely Fetching Data...</h3>`); }
+
+        try {
+            setStatus("Confirm Access...", "online");
+            const tx = await contract.accessFile(id);
+            setStatus("Decrypting...", "online");
+            await tx.wait();
+            
+            const cid = await contract.callStatic.accessFile(id);
+            const fileUrl = "https://ipfs.filebase.io/ipfs/" + cid;
+            setStatus("Downloading...", "online");
+            const response = await fetch(fileUrl);
+            const blob = await response.blob();
+            const meta = await getMimeType(blob);
+
+            if (meta.isZip) {
+                const zip = new JSZip();
+                try {
+                    const contents = await zip.loadAsync(blob);
+                    if (contents.files["word/document.xml"]) {
+                        setStatus("Rendering Doc...", "online");
+                        await renderDocxInBrowser(blob, newTab);
+                    } else {
+                        if(newTab) newTab.close();
+                        setStatus("Archive Ready", "online");
+                        await openZipViewer(blob, id);
+                    }
+                } catch(e) { if(newTab) newTab.close(); alert("Corrupt Archive"); }
+            } else {
+                const typedBlob = new Blob([blob], {type: meta.type});
+                const objectUrl = URL.createObjectURL(typedBlob);
+                if(newTab) newTab.location.href = objectUrl;
+                setStatus("Online", "online");
+            }
+        } catch (err) { console.error(err); if(newTab) newTab.close(); if (err.message.includes("revert")) setStatus("Access Denied", "error"); else setStatus("Cancelled/Error", "error"); }
+    }
+
+    async function renderDocxInBrowser(blob, tab) {
+        const arrayBuffer = await blob.arrayBuffer();
+        const result = await mammoth.convertToHtml({arrayBuffer: arrayBuffer});
+        const html = result.value; 
+        tab.document.open();
+        tab.document.write(`<!DOCTYPE html><html><head><title>Secure Document View</title><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>:root { --glass-bg: rgba(40, 40, 45, 0.8); --glass-border: rgba(255, 255, 255, 0.15); --primary: #0A84FF; --text-primary: #FFFFFF; --text-secondary: rgba(235, 235, 245, 0.7); } body { margin: 0; padding: 40px 20px; background-color: #000; background-image: radial-gradient(circle at 50% 0%, #1c0f33 0%, #000000 70%); color: var(--text-primary); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; } .doc-container { background: var(--glass-bg); backdrop-filter: blur(50px) saturate(180%); -webkit-backdrop-filter: blur(50px) saturate(180%); border: 1px solid var(--glass-border); border-radius: 30px; padding: 50px; max-width: 850px; width: 100%; box-shadow: 0 40px 80px rgba(0,0,0,0.6); line-height: 1.8; } .banner { background: rgba(10, 132, 255, 0.15); color: var(--primary); border: 1px solid var(--primary); padding: 12px; text-align: center; margin-bottom: 40px; border-radius: 16px; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; } h1, h2, h3, h4, h5 { color: var(--text-primary); margin-top: 1.5em; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px; } a { color: var(--primary); text-decoration: none; } strong { color: #fff; } table { border-collapse: collapse; width: 100%; margin: 20px 0; } th { text-align: left; color: var(--text-secondary); font-size: 14px; border-bottom: 2px solid var(--glass-border); padding: 10px; } td { border-bottom: 1px solid var(--glass-border); padding: 10px; color: var(--text-secondary); } img { max-width: 100%; height: auto; border-radius: 12px; margin: 20px 0; } ul, ol { color: var(--text-secondary); padding-left: 30px; } p { margin-bottom: 20px; color: rgba(255,255,255,0.9); }</style></head><body><div class="doc-container"><div class="banner"><span>🔒</span> Secure Document View (Read-Only)</div>${html}</div></body></html>`);
+        tab.document.close();
+        setStatus("Online", "online");
+    }
+
+    /* ---------- ZIP VIEWER & DOWNLOAD LOGIC ---------- */
+    async function openZipViewer(zipBlob, fileId) {
+        const zip = new JSZip();
+        const contents = await zip.loadAsync(zipBlob);
+        const listEl = document.getElementById("zipFileList");
+        listEl.innerHTML = "";
+
+        Object.keys(contents.files).forEach(filename => {
+            const file = contents.files[filename];
+            if(file.dir) return; 
+            
+            const item = document.createElement("div");
+            item.className = "file-item";
+            item.innerHTML = `
+                <div style="display:flex; align-items:center;">
+                    <span class="file-icon">📄</span>
+                    <span style="max-width:200px; overflow:hidden; text-overflow:ellipsis;">${filename}</span>
+                </div>
+                <div class="action-group">
+                    <button class="btn-sm" title="View in Browser">👁️ View</button>
+                    <button class="btn-sm download" title="Save to Disk">⬇️ Save</button>
+                </div>
+            `;
+            
+            // Get Buttons
+            const btnView = item.querySelectorAll("button")[0];
+            const btnSave = item.querySelectorAll("button")[1];
+
+            // Common Logic: Fetch blob -> Detect Type -> Log -> Action
+            const handleFile = async (action) => {
+                try {
+                    setStatus("Logging Access...", "online");
+                    const tx = await contract.logSubFile(fileId, filename);
+                    setStatus("Processing...", "online");
+                    await tx.wait(); 
+
+                    setStatus("Extracting...", "online");
+                    const fileBlob = await file.async("blob");
+                    const meta = await getMimeType(fileBlob);
+                    
+                    if (action === "view") {
+                        if (meta.isZip) { // Nested zip check (e.g. DOCX)
+                            const subZip = new JSZip();
+                            const subContent = await subZip.loadAsync(fileBlob);
+                            if (subContent.files["word/document.xml"]) {
+                                const newTab = window.open("", "_blank");
+                                await renderDocxInBrowser(fileBlob, newTab);
+                                return;
+                            }
+                        }
+                        const finalBlob = new Blob([fileBlob], {type: meta.type});
+                        const fileUrl = URL.createObjectURL(finalBlob);
+                        window.open(fileUrl, "_blank");
+                    } 
+                    else if (action === "save") {
+                        const link = document.createElement("a");
+                        link.href = URL.createObjectURL(fileBlob);
+                        link.download = filename;
+                        link.click();
+                        setStatus("Saved", "online");
+                    }
+                    setStatus("Online", "online");
+
+                } catch(e) { console.error(e); setStatus("Log Failed", "error"); }
+            };
+
+            btnView.onclick = () => handleFile("view");
+            btnSave.onclick = () => handleFile("save");
+
+            listEl.appendChild(item);
+        });
+        toggleOverlay("zipOverlay");
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        initConfig(); 
+        document.getElementById("btnConnect").addEventListener("click", connectWallet);
+        document.getElementById("btnAdd").addEventListener("click", addFile);
+        document.getElementById("btnAuth").addEventListener("click", authorizeUser);
+        document.getElementById("btnAccess").addEventListener("click", accessFile);
+    });
+</script>
+</body>
+</html>
