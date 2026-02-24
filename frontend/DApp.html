@@ -3,19 +3,21 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>DApp | File Access</title>
+  <title>Secure Data Portal</title>
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/aws-sdk/2.1390.0/aws-sdk.min.js"></script>
 
   <style>
-    /* --- iOS 26 SPATIAL THEME --- */
+    /* --- THEME STYLING --- */
     :root {
         --glass-bg: rgba(28, 28, 30, 0.65);
         --glass-border: rgba(255, 255, 255, 0.12);
         --primary: #0A84FF;
         --success: #32D74B;
+        --warning: #FFD60A;
         --danger: #FF453A;
         --text-primary: #FFFFFF;
         --text-secondary: rgba(235, 235, 245, 0.6);
@@ -35,7 +37,7 @@
         overflow: hidden;
     }
 
-    /* WALLPAPER */
+    /* WALLPAPER BACKGROUND */
     .wallpaper {
         position: absolute; width: 150vw; height: 150vh;
         background: radial-gradient(circle at 50% 50%, #1c0f33 0%, #000000 60%);
@@ -46,7 +48,7 @@
     .orb-2 { bottom: 10%; right: 10%; width: 500px; height: 500px; background: #5E5CE6; animation-delay: -5s; }
     @keyframes float { 0%,100%{transform:translate(0,0)} 33%{transform:translate(30px,-50px)} 66%{transform:translate(-20px,20px)} }
 
-    /* APP CONTAINER */
+    /* MAIN APP CONTAINER */
     .app-container {
         position: relative; z-index: 10;
         width: 100%; max-width: 460px;
@@ -76,7 +78,7 @@
     }
     .settings-btn:hover { background: rgba(255,255,255,0.2); transform: rotate(45deg); }
 
-    /* OVERLAYS */
+    /* POPUP OVERLAYS */
     .overlay {
         position: absolute; inset: 0; border-radius: 44px;
         background: rgba(0,0,0,0.95); backdrop-filter: blur(20px);
@@ -97,7 +99,6 @@
     .file-item:hover { background: rgba(255,255,255,0.15); }
     .file-icon { font-size: 18px; margin-right: 10px; }
     
-    /* NEW: Action Buttons inside File List */
     .action-group { display: flex; gap: 8px; }
     .btn-sm {
         padding: 6px 12px; border-radius: 8px; font-size: 12px; border: none; cursor: pointer;
@@ -113,6 +114,15 @@
         color: white; font-size: 17px; outline: none; transition: 0.2s;
     }
     input:focus { background: rgba(120, 120, 128, 0.3); box-shadow: 0 0 0 2px var(--primary); }
+    
+    input[type="file"] {
+        padding: 12px; font-size: 14px; color: var(--text-secondary);
+        background: rgba(120, 120, 128, 0.1); cursor: pointer;
+    }
+    input[type="file"]::-webkit-file-upload-button {
+        background: var(--primary); color: white; border: none; 
+        padding: 8px 16px; border-radius: 10px; font-weight: bold; cursor: pointer; margin-right: 15px;
+    }
 
     button {
         width: 100%; padding: 16px; border-radius: 40px; border: none;
@@ -125,7 +135,7 @@
     .btn-danger { background: rgba(255, 69, 58, 0.2); color: var(--danger); border: 1px solid rgba(255, 69, 58, 0.3); }
     .btn-danger:hover { background: rgba(255, 69, 58, 0.3); }
 
-    /* LOGS */
+    /* AUDIT LOG TABLE */
     .log-card {
         background: rgba(0,0,0,0.3); border-radius: 20px; padding: 15px;
         height: 300px; overflow-y: auto; border: 1px solid var(--glass-border);
@@ -136,7 +146,7 @@
     .time-col { color: var(--text-secondary); font-size: 10px; text-align: right; width: 60px; }
     .user-col { font-family: 'Menlo', monospace; color: var(--primary); word-break: break-all; line-height: 1.4; padding-right: 10px; }
 
-    /* STATUS PILL */
+    /* STATUS INDICATOR */
     #statusPill {
         background: #000; border-radius: 50px; padding: 8px 20px;
         display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -144,6 +154,7 @@
     }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: #333; }
     .dot.online { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    .dot.warning { background: var(--warning); box-shadow: 0 0 8px var(--warning); }
     .dot.error { background: var(--danger); }
     #statusText { font-size: 13px; font-weight: 500; }
     #contractDisplay { font-size: 10px; color: var(--text-secondary); margin-top: 5px; text-align: center;}
@@ -181,8 +192,8 @@
 
     <div class="header-row">
         <button class="settings-btn" onclick="toggleOverlay('settingsOverlay')">⚙️</button>
-        <h2>DApp | File Access</h2>
-        <div class="subtitle">Secure Data Portal</div>
+        <h2>Secure Data Portal</h2>
+        <div class="subtitle">Decentralized Storage App</div>
     </div>
 
     <div id="statusPill">
@@ -199,10 +210,9 @@
     </div>
 
     <div id="adminPanel">
-        <input id="fileId" type="number" placeholder="File ID">
-        <input id="fileName" type="text" placeholder="File Name">
-        <input id="cid" type="text" placeholder="IPFS CID">
-        <button id="btnAdd" class="btn-glass">Upload Record</button>
+        <input id="fileId" type="number" placeholder="Enter File ID">
+        <input id="fileInput" type="file" title="Select file to upload to IPFS">
+        <button id="btnAdd" class="btn-glass">Automated Upload to IPFS</button>
         
         <div style="height:10px; border-bottom:1px solid rgba(255,255,255,0.1)"></div>
 
@@ -246,11 +256,25 @@
 </div>
 
 <script>
-    /* ---------- CONFIG ---------- */
-    let CONTRACT_ADDRESS = localStorage.getItem("nexus_contract_address") || "";
+    /* =========================================
+       1. SYSTEM CONFIGURATION & KEYS
+       ========================================= */
+    // We save the smart contract address in the browser so you don't have to re-type it.
+    let CONTRACT_ADDRESS = localStorage.getItem("dapp_contract_address") || "";
+    
+    // This is the specific Network ID for the Ethereum Sepolia Testnet.
     const SEPOLIA_ID = "0xaa36a7"; 
 
-    /* ---------- UI HELPERS ---------- */
+    // 🔴 FILEBASE (IPFS) CREDENTIALS 
+    // Filebase acts as a bridge. We give it our files, and it puts them on the decentralized IPFS network.
+    const FILEBASE_KEY = "Filebase Key Obtained from Access Keys Option in Filebase";
+    const FILEBASE_SECRET = "Filebase Secret Key Obtained from Access Keys Option in Filebase";
+    const FILEBASE_BUCKET = "your-bucket-name-here"; // CHANGE THIS TO ACTUAL BUCKET NAME
+
+    /* =========================================
+       2. USER INTERFACE HELPERS
+       ========================================= */
+    // These functions simply update the text and colors on the screen based on what the app is doing.
     function initConfig() {
         const display = document.getElementById("contractDisplay");
         if(CONTRACT_ADDRESS && CONTRACT_ADDRESS.length === 42) {
@@ -271,7 +295,7 @@
         const val = document.getElementById("configAddress").value.trim();
         if(!val.startsWith("0x") || val.length !== 42) return alert("Invalid Address");
         CONTRACT_ADDRESS = val;
-        localStorage.setItem("nexus_contract_address", CONTRACT_ADDRESS);
+        localStorage.setItem("dapp_contract_address", CONTRACT_ADDRESS);
         initConfig();
         toggleOverlay('settingsOverlay');
         setTimeout(() => location.reload(), 500);
@@ -284,8 +308,13 @@
         dot.className = "dot " + type;
     }
 
-    /* ---------- BLOCKCHAIN ---------- */
+    /* =========================================
+       3. BLOCKCHAIN CONNECTION (METAMASK)
+       ========================================= */
     let provider, signer, contract;
+    
+    // THE ABI: This is a "translation dictionary". It tells our JavaScript code exactly 
+    // what functions exist inside our Solidity Smart Contract so they can talk to each other.
     const abi = [
       "function addFile(uint256,string,string)",
       "function authorizeUser(uint256,address)",
@@ -297,29 +326,47 @@
       "event SubFileAccessed(uint indexed fileId, string subFileName, address indexed user, uint timestamp)" 
     ];
 
+    // This function acts as the "Login" button. It connects the user's wallet.
     async function connectWallet() {
         if(!CONTRACT_ADDRESS) return toggleOverlay('settingsOverlay');
         if (!window.ethereum) return alert("MetaMask not detected");
+        
         const btn = document.getElementById("btnConnect");
         btn.innerText = "Connecting...";
+        
         try {
+            // Ask MetaMask for permission to see the user's wallet address
             await window.ethereum.request({ method: "eth_requestAccounts" });
+            
+            // Check if they are on the correct network (Sepolia). If not, ask them to switch.
             const chainId = await window.ethereum.request({ method: "eth_chainId" });
             if (chainId !== SEPOLIA_ID) {
                 try { await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: SEPOLIA_ID }] }); } 
                 catch (e) { btn.innerText = "Connect"; return setStatus("Wrong Network", "error"); }
             }
+            
+            // "Provider" connects us to the blockchain data.
             provider = new ethers.providers.Web3Provider(window.ethereum);
+            // "Signer" represents the user's wallet. It allows them to pay gas and sign transactions.
             signer = provider.getSigner();
+            // "Contract" creates a usable JavaScript object linked to our actual code on Ethereum.
             contract = new ethers.Contract(CONTRACT_ADDRESS, abi, signer);
+            
+            // Figure out who just logged in.
             const addr = await signer.getAddress();
             let ownerAddr;
-            try { ownerAddr = await contract.owner(); } catch (e) { 
+            try { 
+                // Ask the contract: "Who is the Admin?"
+                ownerAddr = await contract.owner(); 
+            } catch (e) { 
                 alert("Error connecting. Check Contract Address.");
                 return setStatus("Contract Error", "error"); 
             }
+            
             setStatus("Online", "online");
             document.getElementById("connectPanel").style.display = "none";
+            
+            // If the person logging in is the Admin, show the Admin Panel. Otherwise, show the User Panel.
             if (addr.toLowerCase() === ownerAddr.toLowerCase()) {
                 document.getElementById("adminPanel").style.display = "flex";
                 loadAuditLogs();
@@ -329,53 +376,123 @@
         } catch (err) { console.error(err); btn.innerText = "Connect Wallet"; setStatus("Connection Failed", "error"); }
     }
 
+    /* =========================================
+       4. ADMIN FUNCTIONS (UPLOADING & AUDIT LOGS)
+       ========================================= */
+
+    // This fetches the "Events" (Audit Logs) saved permanently on the blockchain.
     async function loadAuditLogs() {
         if (!contract) return;
         const tbody = document.querySelector("#auditTable tbody");
         try {
+            // Ask the blockchain to filter out and return all past access events
             const filterMain = contract.filters.FileAccessed();
             const filterSub = contract.filters.SubFileAccessed();
             const logsMain = await contract.queryFilter(filterMain);
             const logsSub = await contract.queryFilter(filterSub);
+            
+            // Sort them so the newest events show at the top
             const allLogs = [...logsMain, ...logsSub].sort((a, b) => { return b.args.timestamp - a.args.timestamp || b.blockNumber - a.blockNumber; });
             tbody.innerHTML = "";
+            
             if (allLogs.length === 0) { tbody.innerHTML = "<tr><td colspan='3' align='center' style='color:#666; padding:20px;'>No access logs found.</td></tr>"; return; }
+            
+            // Loop through the logs and display them in the HTML table
             for (let ev of allLogs) {
                 const isSub = ev.event === "SubFileAccessed";
                 const { fileId, user, timestamp } = ev.args;
                 const name = isSub ? ev.args.subFileName : ev.args.fileName;
-                const date = new Date(timestamp * 1000);
+                const date = new Date(timestamp * 1000); // Blockchain time is in seconds, JS needs milliseconds
                 const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                let displayName = isSub ? `<span style="color:var(--primary); margin-left:10px;">↳ ${name}</span>` : name;
+                
+                let displayName = name;
+                if(isSub) {
+                    if(name.includes("[DOWNLOAD]")) {
+                        displayName = `<span style="color:var(--success); margin-left:10px;">↳ ${name}</span>`;
+                    } else {
+                        displayName = `<span style="color:var(--primary); margin-left:10px;">↳ ${name}</span>`;
+                    }
+                }
                 const row = `<tr><td><div style="font-weight:600; color:white; font-size:13px;">${displayName}</div><div style="font-size:10px; opacity:0.6;">ID ${fileId}</div></td><td class="user-col">${user}</td><td class="time-col">${timeString}</td></tr>`;
                 tbody.insertAdjacentHTML('beforeend', row);
             }
         } catch (err) { console.error(err); }
     }
 
+    // AUTOMATED UPLOAD: This function sends the physical file to the IPFS network via Filebase.
+    async function uploadToFilebase(file) {
+        return new Promise((resolve, reject) => {
+            // Setup our "bridge" using the AWS SDK
+            AWS.config.update({
+                accessKeyId: FILEBASE_KEY,
+                secretAccessKey: FILEBASE_SECRET,
+                region: 'us-east-1',
+                signatureVersion: 'v4'
+            });
+
+            const s3 = new AWS.S3({ endpoint: 'https://s3.filebase.com', s3ForcePathStyle: true });
+            const params = { Bucket: FILEBASE_BUCKET, Key: file.name, Body: file };
+
+            let cid = "";
+            const request = s3.putObject(params);
+            
+            // When Filebase successfully saves the file, it replies with headers.
+            // We intercept those headers to grab the "CID" (The unique IPFS Fingerprint).
+            request.on('httpHeaders', (statusCode, headers) => {
+                if(headers['x-amz-meta-cid']) {
+                    cid = headers['x-amz-meta-cid'];
+                }
+            });
+
+            request.send((err, data) => {
+                if (err) reject(err);
+                else resolve(cid);
+            });
+        });
+    }
+
+    // This handles the 2-step process: Upload to IPFS -> Save Fingerprint on Blockchain
     async function addFile() {
         try {
             const id = document.getElementById("fileId").value;
-            const name = document.getElementById("fileName").value; 
-            const cid = document.getElementById("cid").value;
-            if(!id || !cid || !name) return setStatus("Missing Input", "error");
-            setStatus("Confirm Upload...", "online");
-            const tx = await contract.addFile(id, cid, name);
-            setStatus("Uploading...", "online");
-            await tx.wait();
-            setStatus("File Added", "online");
-        } catch(e) { setStatus("Failed", "error"); }
+            const fileInput = document.getElementById("fileInput");
+            
+            if(!id || fileInput.files.length === 0) return setStatus("Missing Input", "error");
+            const file = fileInput.files[0];
+            const fileName = file.name;
+
+            // Step 1: Push to decentralized storage
+            setStatus("Uploading to IPFS...", "warning");
+            const cid = await uploadToFilebase(file); // We wait until we get the unique fingerprint back
+            
+            if(!cid) throw new Error("Failed to retrieve CID from Filebase. Check your bucket CORS settings.");
+            
+            // Step 2: Push the ID, Name, and Fingerprint (CID) to the Ethereum ledger
+            setStatus("Confirm Ledger Tx...", "online");
+            const tx = await contract.addFile(id, cid, fileName); // MetaMask pops up here asking the Admin to pay gas
+            
+            setStatus("Writing to Chain...", "online");
+            await tx.wait(); // Wait for the network to confirm the block is mined
+            
+            setStatus("File Fully Registered", "online");
+            fileInput.value = ""; // Clear the form
+
+        } catch(e) { console.error(e); setStatus("Upload Failed", "error"); }
     }
 
+    // Adds a specific user's wallet address to the "Approved" list for a specific File ID.
     async function authorizeUser() {
         try {
             const id = document.getElementById("authFileId").value;
             const addr = document.getElementById("userAddr").value;
             if(!id || !addr) return setStatus("Missing Input", "error");
             setStatus("Confirm Auth...", "online");
-            const tx = await contract.authorizeUser(id, addr);
+            
+            // Send the rule to the Smart Contract
+            const tx = await contract.authorizeUser(id, addr); 
             setStatus("Authorizing...", "online");
             await tx.wait();
+            
             setStatus("User Authorized", "online");
         } catch(e) { setStatus("Failed", "error"); }
     }
@@ -394,6 +511,11 @@
         } catch(e) { setStatus("Failed", "error"); }
     }
 
+    /* =========================================
+       5. USER FUNCTIONS (SECURE VIEWING)
+       ========================================= */
+
+    // Helper to figure out if a file is plain text, image, ZIP, or PDF by reading its raw data.
     function isTextFile(bytes) {
         for (let i = 0; i < bytes.length && i < 50; i++) {
             const b = bytes[i];
@@ -413,64 +535,28 @@
         return { type: 'application/octet-stream', ext: 'bin', isZip: false };
     }
 
-    async function accessFile() {
-        const id = document.getElementById("viewId").value;
-        if(!id) return setStatus("Enter ID", "error");
-        const newTab = window.open("", "_blank");
-        if (newTab) { newTab.document.write(`<style>body{background:#000;color:#fff;font-family:-apple-system,sans-serif;display:flex;flex-direction:column;justify-content:center;align-items:center;height:100vh;margin:0;}.loader{border:4px solid #333;border-top:4px solid #0A84FF;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin-bottom:20px;}@keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}</style><div class="loader"></div><h3>Securely Fetching Data...</h3>`); }
-
-        try {
-            setStatus("Confirm Access...", "online");
-            const tx = await contract.accessFile(id);
-            setStatus("Decrypting...", "online");
-            await tx.wait();
-            
-            const cid = await contract.callStatic.accessFile(id);
-            const fileUrl = "https://ipfs.filebase.io/ipfs/" + cid;
-            setStatus("Downloading...", "online");
-            const response = await fetch(fileUrl);
-            const blob = await response.blob();
-            const meta = await getMimeType(blob);
-
-            if (meta.isZip) {
-                const zip = new JSZip();
-                try {
-                    const contents = await zip.loadAsync(blob);
-                    if (contents.files["word/document.xml"]) {
-                        setStatus("Rendering Doc...", "online");
-                        await renderDocxInBrowser(blob, newTab);
-                    } else {
-                        if(newTab) newTab.close();
-                        setStatus("Archive Ready", "online");
-                        await openZipViewer(blob, id);
-                    }
-                } catch(e) { if(newTab) newTab.close(); alert("Corrupt Archive"); }
-            } else {
-                const typedBlob = new Blob([blob], {type: meta.type});
-                const objectUrl = URL.createObjectURL(typedBlob);
-                if(newTab) newTab.location.href = objectUrl;
-                setStatus("Online", "online");
-            }
-        } catch (err) { console.error(err); if(newTab) newTab.close(); if (err.message.includes("revert")) setStatus("Access Denied", "error"); else setStatus("Cancelled/Error", "error"); }
-    }
-
+    // This converts a Microsoft Word Doc (.docx) into web-viewable HTML on the fly.
     async function renderDocxInBrowser(blob, tab) {
-        const arrayBuffer = await blob.arrayBuffer();
-        const result = await mammoth.convertToHtml({arrayBuffer: arrayBuffer});
+        const arrayBuffer = await blob.arrayBuffer(); // Get raw data
+        const result = await mammoth.convertToHtml({arrayBuffer: arrayBuffer}); // Convert
         const html = result.value; 
+        
         tab.document.open();
+        // We write a customized dark-mode document interface directly into the new tab.
         tab.document.write(`<!DOCTYPE html><html><head><title>Secure Document View</title><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>:root { --glass-bg: rgba(40, 40, 45, 0.8); --glass-border: rgba(255, 255, 255, 0.15); --primary: #0A84FF; --text-primary: #FFFFFF; --text-secondary: rgba(235, 235, 245, 0.7); } body { margin: 0; padding: 40px 20px; background-color: #000; background-image: radial-gradient(circle at 50% 0%, #1c0f33 0%, #000000 70%); color: var(--text-primary); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; } .doc-container { background: var(--glass-bg); backdrop-filter: blur(50px) saturate(180%); -webkit-backdrop-filter: blur(50px) saturate(180%); border: 1px solid var(--glass-border); border-radius: 30px; padding: 50px; max-width: 850px; width: 100%; box-shadow: 0 40px 80px rgba(0,0,0,0.6); line-height: 1.8; } .banner { background: rgba(10, 132, 255, 0.15); color: var(--primary); border: 1px solid var(--primary); padding: 12px; text-align: center; margin-bottom: 40px; border-radius: 16px; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; } h1, h2, h3, h4, h5 { color: var(--text-primary); margin-top: 1.5em; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px; } a { color: var(--primary); text-decoration: none; } strong { color: #fff; } table { border-collapse: collapse; width: 100%; margin: 20px 0; } th { text-align: left; color: var(--text-secondary); font-size: 14px; border-bottom: 2px solid var(--glass-border); padding: 10px; } td { border-bottom: 1px solid var(--glass-border); padding: 10px; color: var(--text-secondary); } img { max-width: 100%; height: auto; border-radius: 12px; margin: 20px 0; } ul, ol { color: var(--text-secondary); padding-left: 30px; } p { margin-bottom: 20px; color: rgba(255,255,255,0.9); }</style></head><body><div class="doc-container"><div class="banner"><span>🔒</span> Secure Document View (Read-Only)</div>${html}</div></body></html>`);
         tab.document.close();
         setStatus("Online", "online");
     }
 
-    /* ---------- ZIP VIEWER & DOWNLOAD LOGIC ---------- */
+    // Handles expanding compressed files (.zip) in the browser's temporary memory.
     async function openZipViewer(zipBlob, fileId) {
         const zip = new JSZip();
-        const contents = await zip.loadAsync(zipBlob);
+        // Load the ZIP file into memory without extracting it to the hard drive
+        const contents = await zip.loadAsync(zipBlob); 
         const listEl = document.getElementById("zipFileList");
         listEl.innerHTML = "";
 
+        // Loop through everything inside the zip and display it
         Object.keys(contents.files).forEach(filename => {
             const file = contents.files[filename];
             if(file.dir) return; 
@@ -488,24 +574,29 @@
                 </div>
             `;
             
-            // Get Buttons
             const btnView = item.querySelectorAll("button")[0];
             const btnSave = item.querySelectorAll("button")[1];
 
-            // Common Logic: Fetch blob -> Detect Type -> Log -> Action
+            // When a user interacts with a specific file inside the zip, we log it!
             const handleFile = async (action) => {
                 try {
-                    setStatus("Logging Access...", "online");
-                    const tx = await contract.logSubFile(fileId, filename);
-                    setStatus("Processing...", "online");
-                    await tx.wait(); 
+                    let logName = filename;
+                    if(action === "save") logName += " [DOWNLOAD]";
+                    else logName += " [VIEW]";
 
+                    // 1. Force the user to sign a transaction to prove they opened this exact sub-file.
+                    setStatus("Logging Access...", "online");
+                    const tx = await contract.logSubFile(fileId, logName);
+                    setStatus("Processing...", "online");
+                    await tx.wait(); // Wait for the audit log to be permanently recorded
+
+                    // 2. Only after the audit log is saved, we extract and show the file.
                     setStatus("Extracting...", "online");
                     const fileBlob = await file.async("blob");
                     const meta = await getMimeType(fileBlob);
                     
                     if (action === "view") {
-                        if (meta.isZip) { // Nested zip check (e.g. DOCX)
+                        if (meta.isZip) { // Sometimes Docx files are technically Zips, we handle that here.
                             const subZip = new JSZip();
                             const subContent = await subZip.loadAsync(fileBlob);
                             if (subContent.files["word/document.xml"]) {
@@ -514,11 +605,13 @@
                                 return;
                             }
                         }
+                        // For basic files (PDF, images), we just show them.
                         const finalBlob = new Blob([fileBlob], {type: meta.type});
                         const fileUrl = URL.createObjectURL(finalBlob);
                         window.open(fileUrl, "_blank");
                     } 
                     else if (action === "save") {
+                        // Create an invisible link and click it to trigger a normal download.
                         const link = document.createElement("a");
                         link.href = URL.createObjectURL(fileBlob);
                         link.download = filename;
@@ -538,6 +631,64 @@
         toggleOverlay("zipOverlay");
     }
 
+    // THE MAIN VIEWER LOGIC
+    // This connects to the Smart Contract, asks for permission, retrieves the file, and processes it.
+    async function accessFile() {
+        const id = document.getElementById("viewId").value;
+        if(!id) return setStatus("Enter ID", "error");
+        
+        // Open a loading tab immediately to show the user we are working.
+        const newTab = window.open("", "_blank");
+        if (newTab) { newTab.document.write(`<style>body{background:#000;color:#fff;font-family:-apple-system,sans-serif;display:flex;flex-direction:column;justify-content:center;align-items:center;height:100vh;margin:0;}.loader{border:4px solid #333;border-top:4px solid #0A84FF;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin-bottom:20px;}@keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}</style><div class="loader"></div><h3>Securely Fetching Data...</h3>`); }
+
+        try {
+            setStatus("Confirm Access...", "online");
+            // 1. Tell the Smart Contract we want to access the file (This generates the Audit Log).
+            const tx = await contract.accessFile(id);
+            setStatus("Decrypting...", "online");
+            await tx.wait(); // Wait for network confirmation
+            
+            // 2. Ask the Smart Contract to give us the secret IPFS Fingerprint (CID).
+            // (callStatic means we are just reading data, not spending gas).
+            const cid = await contract.callStatic.accessFile(id);
+            const fileUrl = "https://ipfs.filebase.io/ipfs/" + cid;
+            
+            // 3. Go to the decentralized web and fetch the raw data stream.
+            setStatus("Downloading...", "online");
+            const response = await fetch(fileUrl);
+            const blob = await response.blob();
+            const meta = await getMimeType(blob);
+
+            // 4. Figure out what to do with the data (Open ZIP, render DOCX, or just display).
+            if (meta.isZip) {
+                const zip = new JSZip();
+                try {
+                    const contents = await zip.loadAsync(blob);
+                    if (contents.files["word/document.xml"]) {
+                        setStatus("Rendering Doc...", "online");
+                        await renderDocxInBrowser(blob, newTab);
+                    } else {
+                        if(newTab) newTab.close();
+                        setStatus("Archive Ready", "online");
+                        await openZipViewer(blob, id);
+                    }
+                } catch(e) { if(newTab) newTab.close(); alert("Corrupt Archive"); }
+            } else {
+                const typedBlob = new Blob([blob], {type: meta.type});
+                const objectUrl = URL.createObjectURL(typedBlob);
+                if(newTab) newTab.location.href = objectUrl;
+                setStatus("Online", "online");
+            }
+        } catch (err) { 
+            console.error(err); 
+            if(newTab) newTab.close(); 
+            // If the Smart Contract says "revert", it means the user was not authorized!
+            if (err.message && err.message.includes("revert")) setStatus("Access Denied", "error"); 
+            else setStatus("Cancelled/Error", "error"); 
+        }
+    }
+
+    // When the webpage finishes loading, set up all the buttons.
     window.addEventListener('DOMContentLoaded', () => {
         initConfig(); 
         document.getElementById("btnConnect").addEventListener("click", connectWallet);
