@@ -1,169 +1,145 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Secure Data Portal</title>
-  
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/aws-sdk/2.1390.0/aws-sdk.min.js"></script>
-
-  <style>
-    /* --- THEME STYLING --- */
-    :root {
-        --glass-bg: rgba(28, 28, 30, 0.65);
-        --glass-border: rgba(255, 255, 255, 0.12);
-        --primary: #0A84FF;
-        --success: #32D74B;
-        --warning: #FFD60A;
-        --danger: #FF453A;
-        --text-primary: #FFFFFF;
-        --text-secondary: rgba(235, 235, 245, 0.6);
-    }
-
-    * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
-
-    body {
-        margin: 0;
-        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
-        background: #000;
-        color: var(--text-primary);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        min-height: 100vh;
-        overflow: hidden;
-    }
-
-    /* WALLPAPER BACKGROUND */
-    .wallpaper {
-        position: absolute; width: 150vw; height: 150vh;
-        background: radial-gradient(circle at 50% 50%, #1c0f33 0%, #000000 60%);
-        z-index: 0;
-    }
-    .orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.6; animation: float 20s infinite; }
-    .orb-1 { top: 20%; left: 20%; width: 400px; height: 400px; background: #0A84FF; }
-    .orb-2 { bottom: 10%; right: 10%; width: 500px; height: 500px; background: #5E5CE6; animation-delay: -5s; }
-    @keyframes float { 0%,100%{transform:translate(0,0)} 33%{transform:translate(30px,-50px)} 66%{transform:translate(-20px,20px)} }
-
-    /* MAIN APP CONTAINER */
-    .app-container {
-        position: relative; z-index: 10;
-        width: 100%; max-width: 460px;
-        background: var(--glass-bg);
-        backdrop-filter: blur(50px) saturate(180%);
-        -webkit-backdrop-filter: blur(50px) saturate(180%);
-        border: 1px solid var(--glass-border);
-        border-radius: 44px;
-        padding: 40px 32px;
-        box-shadow: 0 40px 80px rgba(0,0,0,0.5);
-        display: flex; flex-direction: column; gap: 20px;
-        max-height: 90vh;
-        overflow-y: auto; 
-    }
-
-    /* HEADER */
-    .header-row { text-align: center; position: relative; margin-bottom: 10px; }
-    h2 { font-size: 32px; font-weight: 700; margin: 0 0 8px 0; }
-    .subtitle { font-size: 15px; color: var(--text-secondary); margin-top: 0; }
-
-    .settings-btn {
-        position: absolute; top: -10px; right: -10px;
-        background: rgba(255,255,255,0.1); border-radius: 50%;
-        width: 36px; height: 36px; border: none; cursor: pointer;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 18px; transition: 0.2s;
-    }
-    .settings-btn:hover { background: rgba(255,255,255,0.2); transform: rotate(45deg); }
-
-    /* POPUP OVERLAYS */
-    .overlay {
-        position: absolute; inset: 0; border-radius: 44px;
-        background: rgba(0,0,0,0.95); backdrop-filter: blur(20px);
-        z-index: 50; display: none; flex-direction: column; 
-        padding: 30px; text-align: center; overflow-y: auto;
-    }
-
-    .file-list {
-        text-align: left; margin-top: 20px; width: 100%;
-        display: flex; flex-direction: column; gap: 8px;
-    }
-    .file-item {
-        background: rgba(255,255,255,0.08); padding: 12px 16px;
-        border-radius: 12px; font-size: 14px; 
-        display: flex; justify-content: space-between; align-items: center;
-        transition: 0.2s;
-    }
-    .file-item:hover { background: rgba(255,255,255,0.15); }
-    .file-icon { font-size: 18px; margin-right: 10px; }
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ISRO Satellite Data Vault</title>
     
-    .action-group { display: flex; gap: 8px; }
-    .btn-sm {
-        padding: 6px 12px; border-radius: 8px; font-size: 12px; border: none; cursor: pointer;
-        background: rgba(255,255,255,0.1); color: var(--text-primary); transition: 0.2s; margin-top:0; width: auto;
-    }
-    .btn-sm:hover { background: var(--primary); color: white; }
-    .btn-sm.download:hover { background: var(--success); }
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 
-    /* INPUTS & BUTTONS */
-    input {
-        width: 100%; background: rgba(120, 120, 128, 0.16);
-        border: none; border-radius: 16px; padding: 16px;
-        color: white; font-size: 17px; outline: none; transition: 0.2s;
-    }
-    input:focus { background: rgba(120, 120, 128, 0.3); box-shadow: 0 0 0 2px var(--primary); }
-    
-    input[type="file"] {
-        padding: 12px; font-size: 14px; color: var(--text-secondary);
-        background: rgba(120, 120, 128, 0.1); cursor: pointer;
-    }
-    input[type="file"]::-webkit-file-upload-button {
-        background: var(--primary); color: white; border: none; 
-        padding: 8px 16px; border-radius: 10px; font-weight: bold; cursor: pointer; margin-right: 15px;
-    }
+    <style>
+        /* --- LIGHT GLASSMORPHISM THEME STYLING --- */
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.6);
+            --primary: #0A84FF; /* ISRO Blue */
+            --success: #34C759;
+            --warning: #FF9500;
+            --danger: #FF3B30;
+            --text-primary: #1D1D1F;
+            --text-secondary: #86868B;
+            --panel-bg: rgba(0, 0, 0, 0.03);
+        }
 
-    button {
-        width: 100%; padding: 16px; border-radius: 40px; border: none;
-        font-size: 17px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: 8px;
-    }
-    .btn-primary { background: var(--primary); color: white; }
-    .btn-glass { background: rgba(255,255,255,0.1); color: var(--primary); backdrop-filter: blur(10px); }
-    .btn-glass:hover { background: rgba(255,255,255,0.15); }
-    .btn-cancel { background: transparent; color: var(--text-secondary); }
-    .btn-danger { background: rgba(255, 69, 58, 0.2); color: var(--danger); border: 1px solid rgba(255, 69, 58, 0.3); }
-    .btn-danger:hover { background: rgba(255, 69, 58, 0.3); }
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
 
-    /* AUDIT LOG TABLE */
-    .log-card {
-        background: rgba(0,0,0,0.3); border-radius: 20px; padding: 15px;
-        height: 300px; overflow-y: auto; border: 1px solid var(--glass-border);
-    }
-    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    th { text-align: left; font-size: 11px; text-transform: uppercase; color: var(--text-secondary); padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-    td { padding: 12px 0; font-size: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: top;}
-    .time-col { color: var(--text-secondary); font-size: 10px; text-align: right; width: 60px; }
-    .user-col { font-family: 'Menlo', monospace; color: var(--primary); word-break: break-all; line-height: 1.4; padding-right: 10px; }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+            background: #F5F5F7;
+            color: var(--text-primary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
 
-    /* STATUS INDICATOR */
-    #statusPill {
-        background: #000; border-radius: 50px; padding: 8px 20px;
-        display: flex; align-items: center; justify-content: center; gap: 8px;
-        width: fit-content; margin: 0 auto 10px auto;
-    }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: #333; }
-    .dot.online { background: var(--success); box-shadow: 0 0 8px var(--success); }
-    .dot.warning { background: var(--warning); box-shadow: 0 0 8px var(--warning); }
-    .dot.error { background: var(--danger); }
-    #statusText { font-size: 13px; font-weight: 500; }
-    #contractDisplay { font-size: 10px; color: var(--text-secondary); margin-top: 5px; text-align: center;}
+        /* --- BACKGROUND ANIMATION --- */
+        .wallpaper {
+            position: absolute; width: 150vw; height: 150vh;
+            background: radial-gradient(circle at 50% 50%, #ffffff 0%, #e8e8ed 60%);
+            z-index: 0;
+        }
+        .orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.35; animation: float 20s infinite; }
+        .orb-1 { top: 20%; left: 20%; width: 400px; height: 400px; background: #0A84FF; }
+        .orb-2 { bottom: 10%; right: 10%; width: 500px; height: 500px; background: #f37021; animation-delay: -5s; } /* ISRO Orange */
+        @keyframes float { 0%,100%{transform:translate(0,0)} 33%{transform:translate(30px,-50px)} 66%{transform:translate(-20px,20px)} }
 
-    #adminPanel, #userPanel { display: none; flex-direction: column; gap: 15px; }
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
-  </style>
+        /* --- MAIN APP CONTAINER --- */
+        .app-container {
+            position: relative; z-index: 10;
+            width: 100%; max-width: 480px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(40px) saturate(150%);
+            -webkit-backdrop-filter: blur(40px) saturate(150%);
+            border: 1px solid var(--glass-border);
+            border-radius: 40px;
+            padding: 40px 32px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.08);
+            display: flex; flex-direction: column; gap: 20px;
+            max-height: 90vh;
+            overflow-y: auto; 
+        }
+
+        /* --- TYPOGRAPHY AND LAYOUT --- */
+        .header-row { text-align: center; position: relative; margin-bottom: 5px; }
+        .logo-img { width: 100px; margin-bottom: 12px; object-fit: contain; }
+        h2 { font-size: 26px; font-weight: 700; margin: 0 0 6px 0; letter-spacing: 0.5px; color: #000; }
+        .subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 0; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+
+        /* --- OVERLAY MODALS --- */
+        .overlay {
+            position: absolute; inset: 0; border-radius: 40px;
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(20px);
+            z-index: 50; display: none; flex-direction: column; 
+            padding: 30px; text-align: center; overflow-y: auto;
+        }
+
+        /* --- FILE LIST COMPONENTS --- */
+        .file-list { text-align: left; margin-top: 20px; width: 100%; display: flex; flex-direction: column; gap: 8px; }
+        .file-item { background: var(--panel-bg); padding: 12px 16px; border-radius: 12px; font-size: 14px; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; border: 1px solid rgba(0,0,0,0.02); }
+        .file-item:hover { background: rgba(0,0,0,0.06); }
+        .file-icon { font-size: 14px; margin-right: 10px; font-weight: 700; color: var(--text-secondary); }
+        .action-group { display: flex; gap: 8px; }
+        
+        .btn-sm { padding: 6px 12px; border-radius: 8px; font-size: 12px; border: none; cursor: pointer; background: rgba(0,0,0,0.05); color: var(--text-primary); transition: 0.2s; font-weight: 600;}
+        .btn-sm:hover { background: var(--primary); color: white; }
+        .btn-sm.download:hover { background: var(--success); color: white;}
+
+        /* --- INPUTS & BUTTONS --- */
+        input {
+            width: 100%; background: var(--panel-bg);
+            border: 1px solid rgba(0,0,0,0.05); border-radius: 16px; padding: 16px;
+            color: var(--text-primary); font-size: 15px; outline: none; transition: 0.2s;
+        }
+        input::placeholder { color: #A0A0A5; }
+        input:focus { background: rgba(0,0,0,0.05); box-shadow: 0 0 0 2px var(--primary); }
+
+        button { width: 100%; padding: 16px; border-radius: 40px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: 8px; }
+        .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 15px rgba(10, 132, 255, 0.3); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(10, 132, 255, 0.4); }
+        .btn-glass { background: var(--panel-bg); color: var(--primary); }
+        .btn-glass:hover { background: rgba(0,0,0,0.06); }
+        .btn-cancel { background: transparent; color: var(--text-secondary); }
+
+        /* --- AUDIT LOG TABLE --- */
+        .log-card {
+            background: rgba(255,255,255,0.6); border-radius: 20px; padding: 15px;
+            height: 250px; overflow-y: auto; border: 1px solid rgba(0,0,0,0.05);
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.02);
+        }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        th { text-align: left; font-size: 11px; text-transform: uppercase; color: var(--text-secondary); padding-bottom: 8px; border-bottom: 1px solid rgba(0,0,0,0.08); font-weight: 700;}
+        td { padding: 12px 0; font-size: 12px; border-bottom: 1px solid rgba(0,0,0,0.03); vertical-align: top;}
+        .time-col { color: var(--text-secondary); font-size: 10px; text-align: right; width: 60px; font-weight: 600;}
+        .user-col { font-family: 'Menlo', monospace; color: var(--primary); word-break: break-all; line-height: 1.4; padding-right: 10px; }
+
+        /* --- STATUS INDICATOR --- */
+        #statusPill {
+            background: rgba(255,255,255,0.8); border-radius: 50px; padding: 8px 20px;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            width: fit-content; margin: 0 auto 10px auto;
+            border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+        }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: #D1D1D6; }
+        .dot.online { background: var(--success); box-shadow: 0 0 8px var(--success); }
+        .dot.warning { background: var(--warning); box-shadow: 0 0 8px var(--warning); }
+        .dot.error { background: var(--danger); }
+        #statusText { font-size: 12px; font-weight: 600; color: var(--text-primary);}
+
+        .auto-loader-banner {
+            background: rgba(10, 132, 255, 0.05); border-radius: 16px; padding: 15px; 
+            text-align: center; border: 1px dashed rgba(10, 132, 255, 0.3);
+        }
+
+        #adminPanel, #userPanel { display: none; flex-direction: column; gap: 15px; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 4px; }
+    </style>
 </head>
 <body>
 
@@ -174,133 +150,88 @@
 
 <div class="app-container">
     
-    <div id="settingsOverlay" class="overlay">
-        <h3>Configuration</h3>
-        <p style="color:var(--text-secondary); font-size:14px; margin-bottom:20px;">
-            Update the deployed Smart Contract address below.
-        </p>
-        <input id="configAddress" type="text" placeholder="0x..." style="margin-bottom:10px;">
-        <button onclick="saveConfig()" class="btn-primary">Save Address</button>
-        <button onclick="toggleOverlay('settingsOverlay')" class="btn-cancel">Cancel</button>
-    </div>
-
     <div id="zipOverlay" class="overlay">
-        <h3>Archive Viewer</h3>
+        <h3 style="color:#000;">Telemetry Archive Viewer</h3>
         <div id="zipFileList" class="file-list"></div>
         <button onclick="toggleOverlay('zipOverlay')" class="btn-cancel" style="margin-top:20px;">Close Viewer</button>
     </div>
 
     <div class="header-row">
-        <button class="settings-btn" onclick="toggleOverlay('settingsOverlay')">⚙️</button>
-        <h2>Secure Data Portal</h2>
-        <div class="subtitle">Decentralized Storage App</div>
+        <img src="icon.png" alt="ISRO Logo" class="logo-img">
+        <h2>Satellite Data Vault</h2>
     </div>
 
     <div id="statusPill">
         <div id="statusDot" class="dot"></div>
         <span id="statusText">System Offline</span>
     </div>
-    <div id="contractDisplay">Target: Not Set</div>
 
     <div id="connectPanel">
-        <p style="text-align:center; color:var(--text-secondary); font-size:15px;">
-            Connect Wallet to view files or audit logs.
+        <p style="text-align:center; color:var(--text-secondary); font-size:14px; margin-bottom: 25px; line-height: 1.5;">
+            Connect wallet to access the decentralized node.
         </p>
         <button id="btnConnect" class="btn-primary">Connect Wallet</button>
     </div>
 
     <div id="adminPanel">
-        <input id="fileId" type="number" placeholder="Enter File ID">
-        <input id="fileInput" type="file" title="Select file to upload to IPFS">
-        <button id="btnAdd" class="btn-glass">Automated Upload to IPFS</button>
-        
-        <div style="height:10px; border-bottom:1px solid rgba(255,255,255,0.1)"></div>
+        <div style="height:1px; background:rgba(0,0,0,0.05); margin: 5px 0;"></div>
 
-        <input id="authFileId" type="number" placeholder="Authorize File ID">
-        <input id="userAddr" type="text" placeholder="User Address (0x...)">
+        <input id="authFileId" type="number" placeholder="Transmission ID to Authorize">
+        <input id="userAddr" type="text" placeholder="Scientist Wallet Address">
         <button id="btnAuth" class="btn-glass">Grant Access</button>
-
-        <details style="margin-top:10px; background:rgba(255,0,0,0.1); border-radius:12px; padding:10px;">
-            <summary style="font-size:12px; color:var(--danger); cursor:pointer; font-weight:700;">⚠️ Danger Zone: Transfer Ownership</summary>
-            <input id="newOwnerAddr" type="text" placeholder="New Owner Address (0x...)" style="margin-top:10px;">
-            <button onclick="transferOwnership()" class="btn-danger">Transfer Contract</button>
-        </details>
 
         <div style="margin-top:10px;">
             <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                <span style="font-size:12px; font-weight:700; color:var(--text-secondary)">LIVE ACCESS LOGS</span>
-                <span onclick="loadAuditLogs()" style="font-size:12px; color:var(--primary); cursor:pointer">↻ Refresh</span>
+                <span style="font-size:11px; font-weight:700; color:var(--text-secondary); letter-spacing: 0.5px;">LIVE ACCESS LOGS</span>
+                <span onclick="loadAuditLogs()" style="font-size:11px; font-weight: 600; color:var(--primary); cursor:pointer">Refresh</span>
             </div>
             <div class="log-card">
                 <table id="auditTable">
-                    <thead><tr><th style="width:100px;">File</th><th>Who Accessed</th><th style="text-align:right">Time</th></tr></thead>
-                    <tbody><tr><td colspan="3" align="center" style="padding:20px; color:#666">Connecting to chain...</td></tr></tbody>
+                    <thead><tr><th style="width:100px;">File</th><th>Wallet Address</th><th style="text-align:right">Time</th></tr></thead>
+                    <tbody><tr><td colspan="3" align="center" style="padding:20px; color:var(--text-secondary); font-weight: 500;">Syncing with ledger...</td></tr></tbody>
                 </table>
             </div>
         </div>
     </div>
 
     <div id="userPanel">
-        <div style="text-align:center; padding: 20px 0;">
-            <div style="font-size:40px;">👁️</div>
-            <h3 style="margin:10px 0 0 0;">Secure View</h3>
-            <p style="color:var(--text-secondary); font-size:13px; margin:5px 0 0 0;">
-                All actions are logged on-chain.
+        <div style="text-align:center; padding: 10px 0 20px 0;">
+            <div style="font-size:14px; font-weight: 700; color:var(--primary); margin-bottom: 10px;">[ RESTRICTED AREA ]</div>
+            <h3 style="margin:0 0 5px 0; color: #000;">Secure File Viewer</h3>
+            <p style="color:var(--text-secondary); font-size:13px; margin:0; line-height: 1.4;">
+                Access requests are permanently logged on the ledger.
             </p>
         </div>
         
-        <input id="viewId" type="number" placeholder="Enter File ID" style="text-align:center; font-size:22px; font-weight:600;">
-        <button id="btnAccess" class="btn-primary">Verify & Open File</button>
+        <input id="viewId" type="number" placeholder="Enter Transmission ID" style="text-align:center; font-size:18px; font-weight:600; letter-spacing: 1px;">
+        <button id="btnAccess" class="btn-primary">Verify & Decrypt</button>
     </div>
 
 </div>
 
 <script>
     /* =========================================
-       1. SYSTEM CONFIGURATION & KEYS
+       1. SYSTEM CONFIGURATION & CONSTANTS
        ========================================= */
-    // We save the smart contract address in the browser so you don't have to re-type it.
-    let CONTRACT_ADDRESS = localStorage.getItem("dapp_contract_address") || "";
+    // The exact address of the deployed Solidity contract on the local EVM
+    const CONTRACT_ADDRESS = "0xd5ABC9CB7411dfaA6985AeE2a0fAE76bbA4b9325"; 
     
-    // This is the specific Network ID for the Ethereum Sepolia Testnet.
-    const SEPOLIA_ID = "0xaa36a7"; 
+    // Chain ID 1337 is the standard default for local Ganache networks
+    const GANACHE_ID = "0x539"; 
 
-    // 🔴 FILEBASE (IPFS) CREDENTIALS 
-    // Filebase acts as a bridge. We give it our files, and it puts them on the decentralized IPFS network.
-    const FILEBASE_KEY = "Filebase Key Obtained from Access Keys Option in Filebase";
-    const FILEBASE_SECRET = "Filebase Secret Key Obtained from Access Keys Option in Filebase";
-    const FILEBASE_BUCKET = "your-bucket-name-here"; // CHANGE THIS TO ACTUAL BUCKET NAME
+    // The endpoint for the local, air-gapped IPFS daemon
+    const IPFS_GATEWAY = "http://127.0.0.1:8080/ipfs/";
 
     /* =========================================
        2. USER INTERFACE HELPERS
        ========================================= */
-    // These functions simply update the text and colors on the screen based on what the app is doing.
-    function initConfig() {
-        const display = document.getElementById("contractDisplay");
-        if(CONTRACT_ADDRESS && CONTRACT_ADDRESS.length === 42) {
-            display.innerText = "Target: " + CONTRACT_ADDRESS.substring(0,8) + "...";
-            document.getElementById("configAddress").value = CONTRACT_ADDRESS;
-        } else {
-            display.innerText = "Target: ⚠️ Missing";
-            toggleOverlay('settingsOverlay');
-        }
-    }
-
+    // Toggles the visibility of modal overlays (like the ZIP viewer)
     function toggleOverlay(id) {
         const el = document.getElementById(id);
         el.style.display = (el.style.display === "flex") ? "none" : "flex";
     }
 
-    function saveConfig() {
-        const val = document.getElementById("configAddress").value.trim();
-        if(!val.startsWith("0x") || val.length !== 42) return alert("Invalid Address");
-        CONTRACT_ADDRESS = val;
-        localStorage.setItem("dapp_contract_address", CONTRACT_ADDRESS);
-        initConfig();
-        toggleOverlay('settingsOverlay');
-        setTimeout(() => location.reload(), 500);
-    }
-
+    // Updates the visual status pill to provide feedback on Web3 operations
     function setStatus(msg, type) {
         const dot = document.getElementById("statusDot");
         const text = document.getElementById("statusText");
@@ -309,213 +240,155 @@
     }
 
     /* =========================================
-       3. BLOCKCHAIN CONNECTION (METAMASK)
+       3. BLOCKCHAIN CONNECTION & INITIALIZATION
        ========================================= */
     let provider, signer, contract;
     
-    // THE ABI: This is a "translation dictionary". It tells our JavaScript code exactly 
-    // what functions exist inside our Solidity Smart Contract so they can talk to each other.
+    // The Application Binary Interface (ABI) maps JavaScript calls to EVM Opcodes
     const abi = [
       "function addFile(uint256,string,string)",
       "function authorizeUser(uint256,address)",
       "function accessFile(uint256) returns (string)", 
       "function logSubFile(uint256,string)", 
-      "function transferOwnership(address)",
       "function owner() view returns (address)",
       "event FileAccessed(uint indexed fileId, string fileName, address indexed user, uint timestamp)",
       "event SubFileAccessed(uint indexed fileId, string subFileName, address indexed user, uint timestamp)" 
     ];
 
-    // This function acts as the "Login" button. It connects the user's wallet.
+    // Handles the initial connection to the MetaMask browser extension
     async function connectWallet() {
-        if(!CONTRACT_ADDRESS) return toggleOverlay('settingsOverlay');
-        if (!window.ethereum) return alert("MetaMask not detected");
+        if(!CONTRACT_ADDRESS || CONTRACT_ADDRESS === "0xYourContractAddressHere") {
+            return alert("DEVELOPER ERROR: Please configure the Smart Contract address.");
+        }
+        if (!window.ethereum) return alert("MetaMask provider not detected.");
         
         const btn = document.getElementById("btnConnect");
         btn.innerText = "Connecting...";
         
         try {
-            // Ask MetaMask for permission to see the user's wallet address
+            // Request permission to view the user's wallet address
             await window.ethereum.request({ method: "eth_requestAccounts" });
             
-            // Check if they are on the correct network (Sepolia). If not, ask them to switch.
+            // Verify the browser is connected to the isolated local network
             const chainId = await window.ethereum.request({ method: "eth_chainId" });
-            if (chainId !== SEPOLIA_ID) {
-                try { await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: SEPOLIA_ID }] }); } 
-                catch (e) { btn.innerText = "Connect"; return setStatus("Wrong Network", "error"); }
+            if (chainId !== GANACHE_ID) {
+                try { 
+                    await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: GANACHE_ID }] }); 
+                } catch (e) { 
+                    btn.innerText = "Connect Wallet"; 
+                    alert("Please switch MetaMask to the Local Ganache Network (Chain ID 1337).");
+                    return setStatus("Wrong Network", "error"); 
+                }
             }
             
-            // "Provider" connects us to the blockchain data.
+            // Initialize the ethers.js provider and signer objects
             provider = new ethers.providers.Web3Provider(window.ethereum);
-            // "Signer" represents the user's wallet. It allows them to pay gas and sign transactions.
             signer = provider.getSigner();
-            // "Contract" creates a usable JavaScript object linked to our actual code on Ethereum.
             contract = new ethers.Contract(CONTRACT_ADDRESS, abi, signer);
             
-            // Figure out who just logged in.
+            // Query the blockchain to determine the user's role
             const addr = await signer.getAddress();
             let ownerAddr;
             try { 
-                // Ask the contract: "Who is the Admin?"
                 ownerAddr = await contract.owner(); 
             } catch (e) { 
-                alert("Error connecting. Check Contract Address.");
+                alert("Smart Contract Query Failed. Ensure Ganache is running and the contract is deployed.");
                 return setStatus("Contract Error", "error"); 
             }
             
-            setStatus("Online", "online");
+            setStatus("Node Synced", "online");
             document.getElementById("connectPanel").style.display = "none";
             
-            // If the person logging in is the Admin, show the Admin Panel. Otherwise, show the User Panel.
+            // Dynamic Rendering: Route the user based on cryptographic clearance
             if (addr.toLowerCase() === ownerAddr.toLowerCase()) {
                 document.getElementById("adminPanel").style.display = "flex";
                 loadAuditLogs();
+                // Establish an asynchronous polling loop to update the dashboard
+                setInterval(loadAuditLogs, 5000);
             } else {
                 document.getElementById("userPanel").style.display = "flex";
             }
-        } catch (err) { console.error(err); btn.innerText = "Connect Wallet"; setStatus("Connection Failed", "error"); }
+        } catch (err) { 
+            console.error(err); 
+            btn.innerText = "Connect Wallet"; 
+            setStatus("Connection Failed", "error"); 
+        }
     }
 
     /* =========================================
-       4. ADMIN FUNCTIONS (UPLOADING & AUDIT LOGS)
+       4. ADMINISTRATIVE FUNCTIONS
        ========================================= */
+    // Note: The addFile() function is omitted here as ingestion is handled via the Python daemon.
 
-    // This fetches the "Events" (Audit Logs) saved permanently on the blockchain.
-    async function loadAuditLogs() {
-        if (!contract) return;
-        const tbody = document.querySelector("#auditTable tbody");
-        try {
-            // Ask the blockchain to filter out and return all past access events
-            const filterMain = contract.filters.FileAccessed();
-            const filterSub = contract.filters.SubFileAccessed();
-            const logsMain = await contract.queryFilter(filterMain);
-            const logsSub = await contract.queryFilter(filterSub);
-            
-            // Sort them so the newest events show at the top
-            const allLogs = [...logsMain, ...logsSub].sort((a, b) => { return b.args.timestamp - a.args.timestamp || b.blockNumber - a.blockNumber; });
-            tbody.innerHTML = "";
-            
-            if (allLogs.length === 0) { tbody.innerHTML = "<tr><td colspan='3' align='center' style='color:#666; padding:20px;'>No access logs found.</td></tr>"; return; }
-            
-            // Loop through the logs and display them in the HTML table
-            for (let ev of allLogs) {
-                const isSub = ev.event === "SubFileAccessed";
-                const { fileId, user, timestamp } = ev.args;
-                const name = isSub ? ev.args.subFileName : ev.args.fileName;
-                const date = new Date(timestamp * 1000); // Blockchain time is in seconds, JS needs milliseconds
-                const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                
-                let displayName = name;
-                if(isSub) {
-                    if(name.includes("[DOWNLOAD]")) {
-                        displayName = `<span style="color:var(--success); margin-left:10px;">↳ ${name}</span>`;
-                    } else {
-                        displayName = `<span style="color:var(--primary); margin-left:10px;">↳ ${name}</span>`;
-                    }
-                }
-                const row = `<tr><td><div style="font-weight:600; color:white; font-size:13px;">${displayName}</div><div style="font-size:10px; opacity:0.6;">ID ${fileId}</div></td><td class="user-col">${user}</td><td class="time-col">${timeString}</td></tr>`;
-                tbody.insertAdjacentHTML('beforeend', row);
-            }
-        } catch (err) { console.error(err); }
-    }
-
-    // AUTOMATED UPLOAD: This function sends the physical file to the IPFS network via Filebase.
-    async function uploadToFilebase(file) {
-        return new Promise((resolve, reject) => {
-            // Setup our "bridge" using the AWS SDK
-            AWS.config.update({
-                accessKeyId: FILEBASE_KEY,
-                secretAccessKey: FILEBASE_SECRET,
-                region: 'us-east-1',
-                signatureVersion: 'v4'
-            });
-
-            const s3 = new AWS.S3({ endpoint: 'https://s3.filebase.com', s3ForcePathStyle: true });
-            const params = { Bucket: FILEBASE_BUCKET, Key: file.name, Body: file };
-
-            let cid = "";
-            const request = s3.putObject(params);
-            
-            // When Filebase successfully saves the file, it replies with headers.
-            // We intercept those headers to grab the "CID" (The unique IPFS Fingerprint).
-            request.on('httpHeaders', (statusCode, headers) => {
-                if(headers['x-amz-meta-cid']) {
-                    cid = headers['x-amz-meta-cid'];
-                }
-            });
-
-            request.send((err, data) => {
-                if (err) reject(err);
-                else resolve(cid);
-            });
-        });
-    }
-
-    // This handles the 2-step process: Upload to IPFS -> Save Fingerprint on Blockchain
-    async function addFile() {
-        try {
-            const id = document.getElementById("fileId").value;
-            const fileInput = document.getElementById("fileInput");
-            
-            if(!id || fileInput.files.length === 0) return setStatus("Missing Input", "error");
-            const file = fileInput.files[0];
-            const fileName = file.name;
-
-            // Step 1: Push to decentralized storage
-            setStatus("Uploading to IPFS...", "warning");
-            const cid = await uploadToFilebase(file); // We wait until we get the unique fingerprint back
-            
-            if(!cid) throw new Error("Failed to retrieve CID from Filebase. Check your bucket CORS settings.");
-            
-            // Step 2: Push the ID, Name, and Fingerprint (CID) to the Ethereum ledger
-            setStatus("Confirm Ledger Tx...", "online");
-            const tx = await contract.addFile(id, cid, fileName); // MetaMask pops up here asking the Admin to pay gas
-            
-            setStatus("Writing to Chain...", "online");
-            await tx.wait(); // Wait for the network to confirm the block is mined
-            
-            setStatus("File Fully Registered", "online");
-            fileInput.value = ""; // Clear the form
-
-        } catch(e) { console.error(e); setStatus("Upload Failed", "error"); }
-    }
-
-    // Adds a specific user's wallet address to the "Approved" list for a specific File ID.
+    // Executes a state transition to map a user address to an authorized File ID
     async function authorizeUser() {
         try {
             const id = document.getElementById("authFileId").value;
             const addr = document.getElementById("userAddr").value;
             if(!id || !addr) return setStatus("Missing Input", "error");
-            setStatus("Confirm Auth...", "online");
             
-            // Send the rule to the Smart Contract
+            setStatus("Sign Access...", "online");
+            
+            // Broadcasts the transaction to the EVM
             const tx = await contract.authorizeUser(id, addr); 
-            setStatus("Authorizing...", "online");
-            await tx.wait();
+            setStatus("Processing...", "online");
+            await tx.wait(); // Wait for the block to be mined
             
-            setStatus("User Authorized", "online");
-        } catch(e) { setStatus("Failed", "error"); }
+            setStatus("Access Granted", "online");
+        } catch(e) { 
+            setStatus("Authorization Failed", "error"); 
+        }
     }
 
-    async function transferOwnership() {
-        const newOwner = document.getElementById("newOwnerAddr").value;
-        if(!newOwner || !newOwner.startsWith("0x")) return setStatus("Invalid Address", "error");
-        if(!confirm("⚠️ WARNING: You are about to lose control of this contract forever. Are you sure?")) return;
+    // Queries the blockchain's Bloom filters to retrieve a chronological audit trail
+    async function loadAuditLogs() {
+        if (!contract) return;
+        const tbody = document.querySelector("#auditTable tbody");
         try {
-            setStatus("Confirm Transfer...", "online");
-            const tx = await contract.transferOwnership(newOwner);
-            setStatus("Transferring...", "online");
-            await tx.wait();
-            alert("Ownership transferred.");
-            location.reload();
-        } catch(e) { setStatus("Failed", "error"); }
+            // Establish the event filters based on the ABI
+            const filterMain = contract.filters.FileAccessed();
+            const filterSub = contract.filters.SubFileAccessed();
+            
+            // Asynchronously fetch logs matching the filters
+            const logsMain = await contract.queryFilter(filterMain);
+            const logsSub = await contract.queryFilter(filterSub);
+            
+            // Combine and sort the logs chronologically
+            const allLogs = [...logsMain, ...logsSub].sort((a, b) => { 
+                return b.args.timestamp - a.args.timestamp || b.blockNumber - a.blockNumber; 
+            });
+            
+            tbody.innerHTML = "";
+            
+            if (allLogs.length === 0) { 
+                tbody.innerHTML = "<tr><td colspan='3' align='center' style='color:var(--text-secondary); padding:20px; font-weight:500;'>No access logs found.</td></tr>"; 
+                return; 
+            }
+            
+            // Dynamically inject the parsed data into the DOM
+            for (let ev of allLogs) {
+                const isSub = ev.event === "SubFileAccessed";
+                const { fileId, user, timestamp } = ev.args;
+                const name = isSub ? ev.args.subFileName : ev.args.fileName;
+                const date = new Date(timestamp * 1000); // Convert UNIX timestamp
+                const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                let displayName = name;
+                if(isSub) {
+                    if(name.includes("[DOWNLOAD]")) displayName = `<span style="color:var(--success); margin-left:10px;">- ${name}</span>`;
+                    else displayName = `<span style="color:var(--primary); margin-left:10px;">- ${name}</span>`;
+                }
+                
+                const row = `<tr><td><div style="font-weight:700; color:var(--text-primary); font-size:12px;">${displayName}</div><div style="font-size:10px; color:var(--text-secondary); margin-top:2px;">ID ${fileId}</div></td><td class="user-col" style="font-size: 10px;">${user}</td><td class="time-col">${timeString}</td></tr>`;
+                tbody.insertAdjacentHTML('beforeend', row);
+            }
+        } catch (err) { console.error("Event Polling Error: ", err); }
     }
 
     /* =========================================
-       5. USER FUNCTIONS (SECURE VIEWING)
+       5. CLIENT-SIDE FILE DECRYPTION & RENDERING
        ========================================= */
-
-    // Helper to figure out if a file is plain text, image, ZIP, or PDF by reading its raw data.
+    // Helper function to detect plain text files via byte analysis
     function isTextFile(bytes) {
         for (let i = 0; i < bytes.length && i < 50; i++) {
             const b = bytes[i];
@@ -524,79 +397,71 @@
         return true;
     }
 
+    // Analyzes the "Magic Numbers" of a file blob to determine its MIME type
     async function getMimeType(blob) {
         const bytes = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
         if (bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) return { type: 'application/pdf', ext: 'pdf', isZip: false };
         if (bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) return { type: 'image/jpeg', ext: 'jpg', isZip: false };
         if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) return { type: 'image/png', ext: 'png', isZip: false };
         if (bytes[4] === 0x66 && bytes[5] === 0x74 && bytes[6] === 0x79 && bytes[7] === 0x70) return { type: 'video/mp4', ext: 'mp4', isZip: false };
+        // Identifies the standard PKZIP format used for grouped telemetry archives
         if (bytes[0] === 0x50 && bytes[1] === 0x4B && bytes[2] === 0x03 && bytes[3] === 0x04) return { type: 'application/zip', ext: 'zip', isZip: true };
         if (isTextFile(bytes)) return { type: 'text/plain', ext: 'txt', isZip: false };
         return { type: 'application/octet-stream', ext: 'bin', isZip: false };
     }
 
-    // This converts a Microsoft Word Doc (.docx) into web-viewable HTML on the fly.
+    // Utilizes Mammoth.js to convert Microsoft Word XML into sanitized HTML for secure browser viewing
     async function renderDocxInBrowser(blob, tab) {
-        const arrayBuffer = await blob.arrayBuffer(); // Get raw data
-        const result = await mammoth.convertToHtml({arrayBuffer: arrayBuffer}); // Convert
+        const arrayBuffer = await blob.arrayBuffer(); 
+        const result = await mammoth.convertToHtml({arrayBuffer: arrayBuffer}); 
         const html = result.value; 
         
         tab.document.open();
-        // We write a customized dark-mode document interface directly into the new tab.
-        tab.document.write(`<!DOCTYPE html><html><head><title>Secure Document View</title><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>:root { --glass-bg: rgba(40, 40, 45, 0.8); --glass-border: rgba(255, 255, 255, 0.15); --primary: #0A84FF; --text-primary: #FFFFFF; --text-secondary: rgba(235, 235, 245, 0.7); } body { margin: 0; padding: 40px 20px; background-color: #000; background-image: radial-gradient(circle at 50% 0%, #1c0f33 0%, #000000 70%); color: var(--text-primary); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; } .doc-container { background: var(--glass-bg); backdrop-filter: blur(50px) saturate(180%); -webkit-backdrop-filter: blur(50px) saturate(180%); border: 1px solid var(--glass-border); border-radius: 30px; padding: 50px; max-width: 850px; width: 100%; box-shadow: 0 40px 80px rgba(0,0,0,0.6); line-height: 1.8; } .banner { background: rgba(10, 132, 255, 0.15); color: var(--primary); border: 1px solid var(--primary); padding: 12px; text-align: center; margin-bottom: 40px; border-radius: 16px; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; } h1, h2, h3, h4, h5 { color: var(--text-primary); margin-top: 1.5em; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px; } a { color: var(--primary); text-decoration: none; } strong { color: #fff; } table { border-collapse: collapse; width: 100%; margin: 20px 0; } th { text-align: left; color: var(--text-secondary); font-size: 14px; border-bottom: 2px solid var(--glass-border); padding: 10px; } td { border-bottom: 1px solid var(--glass-border); padding: 10px; color: var(--text-secondary); } img { max-width: 100%; height: auto; border-radius: 12px; margin: 20px 0; } ul, ol { color: var(--text-secondary); padding-left: 30px; } p { margin-bottom: 20px; color: rgba(255,255,255,0.9); }</style></head><body><div class="doc-container"><div class="banner"><span>🔒</span> Secure Document View (Read-Only)</div>${html}</div></body></html>`);
+        tab.document.write(`<!DOCTYPE html><html><head><title>Telemetry Document View</title><style>body{margin:0;padding:40px;background:#F5F5F7;color:#1D1D1F;font-family:-apple-system, sans-serif;} .doc-container{background:#fff;padding:50px;border-radius:24px;max-width:800px;margin:0 auto;box-shadow: 0 10px 30px rgba(0,0,0,0.05);} h2{color:#0A84FF; border-bottom: 2px solid #f0f0f0; padding-bottom:10px;} img{max-width:100%; border-radius: 8px;}</style></head><body><div class="doc-container"><h2>ISRO Telemetry Log</h2>${html}</div></body></html>`);
         tab.document.close();
-        setStatus("Online", "online");
+        setStatus("Node Synced", "online");
     }
 
-    // Handles expanding compressed files (.zip) in the browser's temporary memory.
+    // Utilizes JSZip to extract and present the contents of an archive in memory
     async function openZipViewer(zipBlob, fileId) {
         const zip = new JSZip();
-        // Load the ZIP file into memory without extracting it to the hard drive
         const contents = await zip.loadAsync(zipBlob); 
         const listEl = document.getElementById("zipFileList");
         listEl.innerHTML = "";
 
-        // Loop through everything inside the zip and display it
         Object.keys(contents.files).forEach(filename => {
             const file = contents.files[filename];
-            if(file.dir) return; 
+            if(file.dir) return; // Skip folder directory listings
             
             const item = document.createElement("div");
             item.className = "file-item";
             item.innerHTML = `
-                <div style="display:flex; align-items:center;">
-                    <span class="file-icon">📄</span>
-                    <span style="max-width:200px; overflow:hidden; text-overflow:ellipsis;">${filename}</span>
-                </div>
-                <div class="action-group">
-                    <button class="btn-sm" title="View in Browser">👁️ View</button>
-                    <button class="btn-sm download" title="Save to Disk">⬇️ Save</button>
-                </div>
+                <div style="display:flex; align-items:center;"><span class="file-icon">[FILE]</span><span style="max-width:200px; overflow:hidden; text-overflow:ellipsis; font-weight:500; color:#1D1D1F;">${filename}</span></div>
+                <div class="action-group"><button class="btn-sm">View</button><button class="btn-sm download">Save</button></div>
             `;
             
             const btnView = item.querySelectorAll("button")[0];
             const btnSave = item.querySelectorAll("button")[1];
 
-            // When a user interacts with a specific file inside the zip, we log it!
+            // Handles individual file extraction from the loaded archive
             const handleFile = async (action) => {
                 try {
-                    let logName = filename;
-                    if(action === "save") logName += " [DOWNLOAD]";
-                    else logName += " [VIEW]";
-
-                    // 1. Force the user to sign a transaction to prove they opened this exact sub-file.
-                    setStatus("Logging Access...", "online");
+                    // Create an immutable log indicating if the file was merely viewed or physically saved
+                    let logName = filename + (action === "save" ? " [DOWNLOAD]" : " [VIEW]");
+                    setStatus("Logging...", "online");
+                    
+                    // Broadcast the specific action to the EVM ledger
                     const tx = await contract.logSubFile(fileId, logName);
                     setStatus("Processing...", "online");
-                    await tx.wait(); // Wait for the audit log to be permanently recorded
+                    await tx.wait(); 
 
-                    // 2. Only after the audit log is saved, we extract and show the file.
-                    setStatus("Extracting...", "online");
+                    setStatus("Decrypting...", "online");
                     const fileBlob = await file.async("blob");
-                    const meta = await getMimeType(fileBlob);
+                    const meta = await getMimeType(blob);
                     
                     if (action === "view") {
-                        if (meta.isZip) { // Sometimes Docx files are technically Zips, we handle that here.
+                        // Check if the file inside the zip is a .docx file to render inline
+                        if (meta.isZip) { 
                             const subZip = new JSZip();
                             const subContent = await subZip.loadAsync(fileBlob);
                             if (subContent.files["word/document.xml"]) {
@@ -605,94 +470,90 @@
                                 return;
                             }
                         }
-                        // For basic files (PDF, images), we just show them.
+                        // Default blob viewing strategy
                         const finalBlob = new Blob([fileBlob], {type: meta.type});
                         const fileUrl = URL.createObjectURL(finalBlob);
                         window.open(fileUrl, "_blank");
-                    } 
-                    else if (action === "save") {
-                        // Create an invisible link and click it to trigger a normal download.
+                    } else if (action === "save") {
+                        // Trigger standard OS download behavior
                         const link = document.createElement("a");
                         link.href = URL.createObjectURL(fileBlob);
                         link.download = filename;
                         link.click();
-                        setStatus("Saved", "online");
                     }
-                    setStatus("Online", "online");
-
+                    setStatus("Node Synced", "online");
                 } catch(e) { console.error(e); setStatus("Log Failed", "error"); }
             };
 
             btnView.onclick = () => handleFile("view");
             btnSave.onclick = () => handleFile("save");
-
             listEl.appendChild(item);
         });
         toggleOverlay("zipOverlay");
     }
 
-    // THE MAIN VIEWER LOGIC
-    // This connects to the Smart Contract, asks for permission, retrieves the file, and processes it.
+    // The primary user flow: Verify cryptographic clearance and retrieve the IPFS payload
     async function accessFile() {
         const id = document.getElementById("viewId").value;
         if(!id) return setStatus("Enter ID", "error");
         
-        // Open a loading tab immediately to show the user we are working.
+        // Open a holding tab immediately to bypass browser popup blockers
         const newTab = window.open("", "_blank");
-        if (newTab) { newTab.document.write(`<style>body{background:#000;color:#fff;font-family:-apple-system,sans-serif;display:flex;flex-direction:column;justify-content:center;align-items:center;height:100vh;margin:0;}.loader{border:4px solid #333;border-top:4px solid #0A84FF;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin-bottom:20px;}@keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}</style><div class="loader"></div><h3>Securely Fetching Data...</h3>`); }
+        if (newTab) { newTab.document.write(`<style>body{background:#F5F5F7;color:#1D1D1F;font-family:-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;}</style><h3>Decrypting File...</h3>`); }
 
         try {
-            setStatus("Confirm Access...", "online");
-            // 1. Tell the Smart Contract we want to access the file (This generates the Audit Log).
+            setStatus("Sign Access...", "online");
+            
+            // 1. Submit the clearance verification to the EVM and emit the Audit Log
             const tx = await contract.accessFile(id);
-            setStatus("Decrypting...", "online");
-            await tx.wait(); // Wait for network confirmation
+            setStatus("Verifying...", "online");
+            await tx.wait(); 
             
-            // 2. Ask the Smart Contract to give us the secret IPFS Fingerprint (CID).
-            // (callStatic means we are just reading data, not spending gas).
+            // 2. Query the EVM locally to retrieve the authorized Content Identifier (CID)
             const cid = await contract.callStatic.accessFile(id);
-            const fileUrl = "https://ipfs.filebase.io/ipfs/" + cid;
+            const fileUrl = IPFS_GATEWAY + cid;
             
-            // 3. Go to the decentralized web and fetch the raw data stream.
-            setStatus("Downloading...", "online");
+            // 3. Request the raw data blocks from the local IPFS daemon
+            setStatus("Fetching...", "online");
             const response = await fetch(fileUrl);
             const blob = await response.blob();
             const meta = await getMimeType(blob);
 
-            // 4. Figure out what to do with the data (Open ZIP, render DOCX, or just display).
+            // 4. Route the decryption strategy based on file format
             if (meta.isZip) {
                 const zip = new JSZip();
                 try {
                     const contents = await zip.loadAsync(blob);
+                    // Check if the zip is actually a .docx file structure
                     if (contents.files["word/document.xml"]) {
-                        setStatus("Rendering Doc...", "online");
                         await renderDocxInBrowser(blob, newTab);
                     } else {
+                        // Standard ZIP archive payload
                         if(newTab) newTab.close();
-                        setStatus("Archive Ready", "online");
                         await openZipViewer(blob, id);
                     }
-                } catch(e) { if(newTab) newTab.close(); alert("Corrupt Archive"); }
+                } catch(e) { if(newTab) newTab.close(); alert("Archive Decryption Error."); }
             } else {
+                // Direct file rendering
                 const typedBlob = new Blob([blob], {type: meta.type});
                 const objectUrl = URL.createObjectURL(typedBlob);
                 if(newTab) newTab.location.href = objectUrl;
-                setStatus("Online", "online");
+                setStatus("Node Synced", "online");
             }
         } catch (err) { 
             console.error(err); 
             if(newTab) newTab.close(); 
-            // If the Smart Contract says "revert", it means the user was not authorized!
+            // Handle specific Smart Contract rejection
             if (err.message && err.message.includes("revert")) setStatus("Access Denied", "error"); 
-            else setStatus("Cancelled/Error", "error"); 
+            else setStatus("System Error", "error"); 
         }
     }
 
-    // When the webpage finishes loading, set up all the buttons.
+    /* =========================================
+       6. EVENT LISTENERS
+       ========================================= */
     window.addEventListener('DOMContentLoaded', () => {
-        initConfig(); 
         document.getElementById("btnConnect").addEventListener("click", connectWallet);
-        document.getElementById("btnAdd").addEventListener("click", addFile);
         document.getElementById("btnAuth").addEventListener("click", authorizeUser);
         document.getElementById("btnAccess").addEventListener("click", accessFile);
     });
