@@ -92,7 +92,7 @@ class AutonomousPipeline(FileSystemEventHandler):
                 
                 # Strip newline characters to isolate the pure CID string.
                 cid = result.stdout.strip()
-                print(f"[✓] Vault Secured. CID: {cid}")
+                print(f"Vault Secured. CID: {cid}")
 
                 # ---------------------------------------------------------
                 # STEP 2: ANCHOR TO BLOCKCHAIN
@@ -104,7 +104,7 @@ class AutonomousPipeline(FileSystemEventHandler):
                 file_id = int(time.time())
                 
                 print(f"\n=============================================")
-                print(f"🔑 IMPORTANT - YOUR FILE ID IS: {file_id}")
+                print(f"YOUR FILE ID IS: {file_id}")
                 print(f"=============================================\n")
                 
                 # Get the current transaction count for the wallet (nonce) to prevent replay attacks.
@@ -127,16 +127,16 @@ class AutonomousPipeline(FileSystemEventHandler):
                 # Halt execution until the EVM confirms the block has been mathematically verified (mined).
                 receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
                 
-                print(f"[✓] BLOCKCHAIN ANCHOR SUCCESSFUL!")
-                print(f"[>] Transaction Hash: {tx_hash.hex()}")
-                print(f"[>] Gas Used: {receipt['gasUsed']}") # Safest way to read the receipt across all versions
+                print(f"BLOCKCHAIN ANCHOR SUCCESSFUL!")
+                print(f"Transaction Hash: {tx_hash.hex()}")
+                print(f"Gas Used: {receipt['gasUsed']}") # Safest way to read the receipt across all versions
                 
             # Handle instances where the IPFS executable fails (e.g., daemon is offline)
             except subprocess.CalledProcessError as e:
-                print(f"[!] IPFS DAEMON FAULT: Make sure 'ipfs daemon' is running.\n{e}")
+                print(f"IPFS DAEMON FAULT: Make sure 'ipfs daemon' is running.\n{e}")
             # Catch all other system or Web3 faults to prevent the daemon from crashing
             except Exception as e:
-                print(f"[!] SYSTEM FAULT: \n{e}")
+                print(f"SYSTEM FAULT: \n{e}")
 
 # ==========================================
 # 5. SYSTEM INITIALIZATION & MAIN LOOP
