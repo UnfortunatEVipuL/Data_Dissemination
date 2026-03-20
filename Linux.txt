@@ -46,10 +46,20 @@ Configure API CORS (Cross-Origin Resource Sharing): Allow your local DApp to com
 Bash
 ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin "[\"*\"]"
 ipfs config --json API.HTTPHeaders.Access-Control-Allow-Methods "[\"PUT\", \"POST\", \"GET\"]"
-Boot the Vault in the Background: Start the daemon and detach it so it runs silently in the background.
+Open your terminal.
+
+Run the daemon command and detach it using the & operator, routing the output to a log file so it doesn't clutter your screen:
 
 Bash
-ipfs daemon > ipfs_log.txt 2>&1 &
+ipfs daemon > ~/ISRO_Vault/ipfs_log.txt 2>&1 &
+The daemon is now running silently. You can verify it by checking the log file:
+
+Bash
+tail -f ~/ISRO_Vault/ipfs_log.txt
+(Press Ctrl+C to exit the log viewer).
+
+To shut it down later: Simply type killall ipfs in the terminal.
+
 Phase 3: Deploying the Headless EVM (Ganache CLI)
 Running the blockchain in the terminal is vastly superior for Linux servers.
 
