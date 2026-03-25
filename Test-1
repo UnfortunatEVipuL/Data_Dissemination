@@ -1,0 +1,32 @@
+System 1:
+  Get the ip: ipconfig (Copy ipv4)
+  Open Windows Defender Firewall with Advanced Security
+    Click Inbound Rules (left panel) -> New Rule... (right panel).
+    Select Port -> Next.
+    Select TCP and enter these exact ports: 3000, 7545, 8080    
+    Select Allow the connection -> Next.
+    Check all profiles (Domain, Private, Public) -> Next.
+
+  Ganache:
+    Open Ganache UI, click the Gear Icon (Settings), and go to the Server tab.
+    Change the Hostname dropdown to 0.0.0.0 - All Interfaces (or select your specific 192.168.1.92 address).  
+    Click Save and Restart.
+
+  IPFS:
+    Open a Command Prompt and run these two commands to open your IPFS nodes to the network:
+    ipfs config Addresses.API /ip4/0.0.0.0/tcp/5001
+    ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
+
+  In HTML:
+    const IPFS_GATEWAY = "http://Sytstem_1_IP:8080/ipfs/";
+
+System 2: 
+  Configure MetaMask:
+    Go to Add Network -> Add a network manually.
+    Network Name: ISRO Local Ledger
+    New RPC URL: http://System_1_IP:7545
+    Chain ID: 1337
+    Currency Symbol: ETH
+    Save and switch to this network.
+
+  Open your web browser and type the web server address into the URL bar: http://System_1_IP:3000
